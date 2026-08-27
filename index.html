@@ -1,0 +1,884 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>غرفة النوم</title>
+<meta name="theme-color" content="#8b5cf6" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>" />
+<script src="/socket.io/socket.io.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+:root { --bg: #000000; --text: #f0e6ff; --text-soft: #a1a1aa; --glass: rgba(15, 10, 25, 0.4); --glass-border: rgba(255, 255, 255, 0.08); --primary: #c084fc; --danger: #ef4444; }
+[data-theme="light"] { --bg: #f8f9fa; --text: #1a1a2e; --text-soft: #64748b; --glass: rgba(255, 255, 255, 0.65); --glass-border: rgba(0, 0, 0, 0.08); --primary: #8b5cf6; --danger: #dc2626; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); transition: background 0.5s ease, color 0.5s ease; }
+body { font-family: 'Tajawal', sans-serif; color: var(--text); display: flex; flex-direction: column; position: relative; }
+#dreamscape { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+#fxCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9990; pointer-events: none; }
+#heartbeat-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; box-shadow: inset 0 0 150px rgba(244, 114, 182, 0.4); transition: opacity 0.3s ease; }
+body.typing #heartbeat-overlay { animation: heartbeat-anim 1.2s ease-in-out infinite; }
+@keyframes heartbeat-anim { 0%, 100% { opacity: 0; transform: scale(1); } 15% { opacity: 1; transform: scale(1.02); } 30% { opacity: 0; transform: scale(1); } 45% { opacity: 0.8; transform: scale(1.01); } }
+#sleep-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; }
+#sleep-overlay.active { display: flex; animation: fade-in 1s; }
+.zzz-container { font-size: 40px; color: rgba(255,255,255,0.5); animation: float-up 3s ease-in-out infinite; }
+@keyframes float-up { 0% { transform: translateY(20px) scale(0.8); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(-50px) scale(1.2); opacity: 0; } }
+#dreamDescentOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: none; align-items: center; justify-content: center; overflow: hidden; }
+#dreamDescentOverlay.show { display: flex; animation: descentFadeIn 1.5s ease-out forwards; }
+@keyframes descentFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+.descent-vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(ellipse at center, rgba(10, 5, 20, 0.7) 0%, rgba(0, 0, 0, 0.95) 100%); backdrop-filter: blur(12px); }
+.descent-content { position: relative; z-index: 10; text-align: center; padding: 50px 40px; max-width: 500px; width: 90%; background: rgba(20, 15, 35, 0.6); border: 1px solid rgba(192, 132, 252, 0.2); border-radius: 30px; backdrop-filter: blur(20px); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1); animation: textFloatUp 1s ease-out forwards; }
+@keyframes textFloatUp { 0% { opacity: 0; transform: translateY(30px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+.descent-close { position: absolute; top: 15px; right: 15px; width: 32px; height: 32px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 50%; color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+.descent-close:hover { background: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5); }
+.descent-icon { font-size: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 25px rgba(192, 132, 252, 0.6)); animation: moonPulse 3s ease-in-out infinite; }
+@keyframes moonPulse { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 1; } }
+#descentName { color: #e0d4ff; font-size: 24px; font-weight: 500; letter-spacing: 1px; margin-bottom: 15px; }
+#descentMessage { color: #c4b5e0; font-size: 18px; font-weight: 300; line-height: 1.7; font-style: italic; margin-bottom: 25px; }
+.descent-countdown { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 20px; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; margin-bottom: 15px; }
+.countdown-icon { font-size: 20px; }
+.countdown-text { color: #c084fc; font-size: 16px; font-weight: 500; }
+.countdown-timer { color: #fff; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.descent-subtext { color: rgba(161, 161, 170, 0.5); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.mood-label { position: fixed; bottom: 92px; left: 10px; font-size: 10px; color: var(--text-soft); z-index: 51; background: var(--glass); padding: 2px 8px; border-radius: 8px; border: 1px solid var(--glass-border); }
+.mood-thermometer { position: fixed; bottom: 80px; left: 10px; width: 200px; height: 8px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 10px; overflow: hidden; z-index: 50; }
+.mood-fill { height: 100%; background: linear-gradient(90deg, #34d399, #f97316, #ef4444); transition: width 0.5s ease; border-radius: 10px; }
+#blanketTextOverlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 24px; font-weight: 600; z-index: 9991; pointer-events: none; text-shadow: 0 0 20px rgba(192, 132, 252, 0.8); background: rgba(0,0,0,0.5); padding: 12px 24px; border-radius: 25px; border: 1px solid rgba(192, 132, 252, 0.3); opacity: 0; transition: opacity 0.8s ease; }
+#blanketTextOverlay.show { opacity: 1; }
+.kiss-float { position: fixed; font-size: 60px; z-index: 9997; pointer-events: none; animation: kissFly 3s ease-in-out forwards; text-shadow: 0 0 20px rgba(244, 114, 182, 0.8); }
+@keyframes kissFly { 0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 0; } 20% { transform: translate(var(--tx1), var(--ty1)) scale(1.5) rotate(180deg); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(var(--tx2), var(--ty2)) scale(0.5) rotate(360deg); opacity: 0; } }
+.screen-shake { animation: shake 0.5s ease-in-out; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+.pillow-score { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: var(--glass); padding: 12px 24px; border-radius: 20px; border: 2px solid var(--glass-border); font-weight: 700; display: none; z-index: 60; }
+.pillow-score.show { display: flex; gap: 20px; align-items: center; }
+#nightLight { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, rgba(255, 180, 100, 0.15), transparent 70%); pointer-events: none; opacity: 0; transition: opacity 1.5s ease; z-index: 2; }
+#nightLight.on { opacity: 1; }
+.nudge-ripple { animation: gentleRipple 0.6s ease-out; }
+@keyframes gentleRipple { 0% { transform: scale(1); } 50% { transform: scale(1.015); filter: brightness(1.1); } 100% { transform: scale(1); } }
+.shooting-star { position: fixed; width: 100px; height: 2px; background: linear-gradient(90deg, rgba(255,255,255,0), #fff, rgba(255,255,255,0)); border-radius: 50%; pointer-events: none; z-index: 3; animation: starFly 1.5s linear forwards; box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8); }
+@keyframes starFly { 0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateX(300px) translateY(300px) rotate(-45deg); opacity: 0; } }
+@media (max-width: 600px) { header { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px; } .user-badges { flex-wrap: wrap; } .controls { width: 100%; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; } .control-btn { width: 34px; height: 34px; font-size: 16px; flex-shrink: 0; } .logout-btn { width: auto !important; padding: 0 10px !important; font-size: 12px !important; } }
+#ui-layer { position: relative; z-index: 10; height: 100%; display: flex; flex-direction: column; }
+#login { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.door { width: 100%; max-width: 380px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 32px; padding: 40px; backdrop-filter: blur(20px); text-align: center; }
+.door h1 { margin-bottom: 12px; font-size: 32px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.door p { margin-bottom: 32px; color: var(--text-soft); font-size: 14px; }
+.door input { width: 100%; padding: 16px; font-size: 24px; letter-spacing: 10px; text-align: center; border-radius: 16px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.5); color: var(--text); outline: none; font-family: 'Tajawal', sans-serif; margin-bottom: 20px; }
+[data-theme="light"] .door input { background: rgba(255,255,255,0.8); }
+.door input:focus { border-color: var(--primary); box-shadow: 0 0 30px rgba(192, 132, 252, 0.3); }
+.door button { width: 100%; padding: 16px; background: linear-gradient(135deg, #8b5cf6, var(--primary)); color: #fff; border-radius: 16px; font-weight: 600; font-size: 16px; border: none; cursor: pointer; }
+.err { color: #f87171; font-size: 13px; margin-top: 16px; min-height: 18px; }
+#chat { display: none; flex: 1; flex-direction: column; height: 100%; max-width: 800px; width: 100%; margin: 0 auto; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); background: var(--glass); backdrop-filter: blur(10px); }
+.room-info { display: flex; flex-direction: column; gap: 8px; }
+.user-badges { display: flex; gap: 8px; align-items: center; }
+.user-badge { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: var(--primary); font-weight: 600; }
+.user-badge.peer { background: rgba(52, 211, 153, 0.15); border-color: rgba(52, 211, 153, 0.3); color: #34d399; }
+.room-status { font-size: 12px; color: var(--text-soft); display: flex; align-items: center; gap: 6px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: #475569; }
+.status-dot.online { background: #34d399; box-shadow: 0 0 8px #34d399; }
+.controls { display: flex; gap: 8px; }
+.control-btn { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--glass-border); color: var(--text); font-size: 18px; cursor: pointer; transition: all 0.3s; }
+.control-btn:hover { background: rgba(139, 92, 246, 0.2); transform: scale(1.1); }
+.control-btn.active { background: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5); }
+.logout-btn { width: auto !important; padding: 0 12px !important; font-size: 14px !important; font-weight: 600 !important; color: var(--danger) !important; border-color: rgba(239, 68, 68, 0.3) !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+.logout-btn:hover { background: rgba(239, 68, 68, 0.1) !important; }
+.dream-catcher-orb { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(circle, rgba(192, 132, 252, 0.8), rgba(139, 92, 246, 0.2)); border: 1px solid rgba(192, 132, 252, 0.5); display: none; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 0 20px rgba(192, 132, 252, 0.5); z-index: 20; animation: orb-glow 2s infinite alternate; }
+.dream-catcher-orb.show { display: flex; }
+@keyframes orb-glow { from { box-shadow: 0 0 10px rgba(192, 132, 252, 0.3); } to { box-shadow: 0 0 30px rgba(192, 132, 252, 0.8); } }
+.dream-catcher-orb .count { position: absolute; top: -5px; right: -5px; background: var(--danger); color: #fff; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-weight: bold; }
+#messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%); }
+#messages::-webkit-scrollbar { width: 0; }
+.message-container { display: flex; flex-direction: column; gap: 4px; animation: drift-up 0.8s cubic-bezier(0.16, 1, 0.3, 1); position: relative; }
+@keyframes drift-up { from { opacity: 0; transform: translateY(40px) scale(0.9); filter: blur(10px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+.message-container.me { align-items: flex-end; }
+.message-container.other { align-items: flex-start; }
+.sender-name { font-size: 11px; color: var(--primary); margin-bottom: 4px; padding: 0 10px; font-weight: 500; text-shadow: 0 0 10px rgba(192, 132, 252, 0.5); }
+.message { max-width: 75%; padding: 14px 20px; border-radius: 24px; font-size: 15px; line-height: 1.6; position: relative; transition: all 0.5s ease; }
+.message.me { background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 0 30px rgba(139, 92, 246, 0.15), inset 0 0 20px rgba(139, 92, 246, 0.1); animation: breathe-glow 4s ease-in-out infinite; }
+.message.other { background: var(--glass); border: 1px solid var(--glass-border); box-shadow: 0 0 20px rgba(255, 255, 255, 0.05); }
+@keyframes breathe-glow { 0%, 100% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.15); } 50% { box-shadow: 0 0 40px rgba(192, 132, 252, 0.3); } }
+.message-container.faded { opacity: 0.4; filter: blur(1px); transition: all 1s ease; }
+.message-image { max-width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 8px; }
+.message-image img { width: 100%; display: block; }
+.message-meta { display: flex; gap: 8px; align-items: center; font-size: 10px; color: var(--text-soft); margin-top: 6px; }
+.message-container.me .message-meta { justify-content: flex-end; }
+.message-ticks { font-size: 12px; }
+.message-ticks.seen { color: #34d399; text-shadow: 0 0 5px rgba(52, 211, 153, 0.5); }
+.reactions { display: flex; gap: 4px; margin-top: 6px; }
+.reaction { background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 12px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+.typing-indicator { padding: 12px 18px; background: var(--glass); border-radius: 20px; border: 1px solid var(--glass-border); display: none; align-items: center; gap: 6px; width: fit-content; backdrop-filter: blur(10px); margin: 0 24px 10px; }
+.typing-indicator.active { display: flex; }
+.typing-dot { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: bounce 1.4s infinite; }
+.typing-dot:nth-child(1) { animation-delay: -0.32s; } .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; background: var(--glass); backdrop-filter: blur(20px); border-top: 1px solid var(--glass-border); }
+#input { flex: 1; resize: none; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: var(--text); padding: 14px 18px; border-radius: 24px; font: inherit; font-size: 15px; max-height: 100px; outline: none; font-family: 'Tajawal', sans-serif; }
+[data-theme="light"] #input { background: rgba(255,255,255,0.8); }
+#input:focus { border-color: var(--primary); box-shadow: 0 0 20px rgba(192, 132, 252, 0.3); }
+#send { background: linear-gradient(135deg, #8b5cf6, var(--primary)); color: #fff; padding: 14px 24px; border-radius: 24px; font-weight: 600; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.show { display: flex; animation: fade-in 0.3s; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal-box { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 24px; padding: 32px; max-width: 400px; width: 90%; text-align: center; backdrop-filter: blur(20px); }
+.modal-box h3 { margin-bottom: 16px; font-size: 20px; }
+.modal-box p { color: var(--text-soft); margin-bottom: 24px; font-size: 14px; }
+.sleep-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.sleep-option { padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; transition: all 0.3s; font-size: 14px; }
+[data-theme="light"] .sleep-option { background: rgba(255,255,255,0.5); }
+.sleep-option:hover, .sleep-option.active { background: rgba(139, 92, 246, 0.3); border-color: var(--primary); }
+.modal-btns { display: flex; gap: 12px; justify-content: center; }
+.modal-btns button { padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; font-family: 'Tajawal'; }
+.btn-cancel { background: rgba(255,255,255,0.1); color: var(--text); }
+.btn-primary { background: linear-gradient(135deg, #8b5cf6, var(--primary)); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.image-panel { position: absolute; bottom: 80px; left: 24px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 20px; padding: 16px; display: none; flex-direction: column; gap: 12px; backdrop-filter: blur(20px); z-index: 50; }
+.image-panel.show { display: flex; }
+.image-panel label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; }
+.image-panel input[type="file"] { display: none; }
+.toggle-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-soft); }
+.toggle { width: 36px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 10px; position: relative; cursor: pointer; }
+.toggle.active { background: var(--primary); }
+.toggle::after { content: ''; position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: 0.3s; }
+.toggle.active::after { right: 18px; }
+</style>
+</head>
+<body>
+<canvas id="dreamscape"></canvas>
+<canvas id="fxCanvas"></canvas>
+<div id="heartbeat-overlay"></div>
+<div id="sleep-overlay"><div class="zzz-container">💤</div></div>
+<div id="nightLight"></div>
+<div id="blanketTextOverlay">Wrapped in warmth</div>
+<video id="hiddenLocalVideo" autoplay playsinline muted style="display:none;"></video>
+
+<div id="dreamDescentOverlay">
+  <div class="descent-vignette"></div>
+  <div class="descent-content">
+    <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')">✕</button>
+    <div class="descent-icon" id="descentIcon">🌙</div>
+    <h2 id="descentName">...</h2>
+    <p id="descentMessage">...</p>
+    <div class="descent-countdown">
+      <span class="countdown-icon">⏳</span>
+      <span class="countdown-text" id="countdownLabel">Falling asleep in</span>
+      <span class="countdown-timer" id="countdownTimer">--:--</span>
+    </div>
+    <div class="descent-subtext">Tap ✕ to dismiss</div>
+  </div>
+</div>
+
+<div class="mood-label">❤️ Mood: <span id="moodPercent">0</span>%</div>
+<div class="mood-thermometer"><div class="mood-fill" id="moodFill" style="width: 0%"></div></div>
+
+<div class="pillow-score" id="pillowScore">
+  <span id="pillowScoreLabel">🛏️ Pillow Fight!</span>
+  <span id="scoreDisplay">0 - 0</span>
+</div>
+
+<div id="ui-layer">
+  <div id="login">
+    <form class="door" id="loginForm">
+      <h1>غرفة النوم</h1>
+      <p>أدخل الرمز للدخول إلى الحلم</p>
+      <input id="pin" type="password" inputmode="numeric" placeholder="••••" maxlength="8" autofocus />
+      <button type="submit">ادخل</button>
+      <div class="err" id="loginErr"></div>
+      <button type="button" id="adminAccessBtn" style="margin-top:20px; background:none; border:none; color:var(--text-soft); cursor:pointer; font-size:12px; font-family:'Tajawal';">⚙️ إعدادات المسؤول</button>
+    </form>
+  </div>
+
+  <div id="chat">
+    <header>
+      <div class="room-info">
+        <div class="user-badges">
+          <div class="user-badge">أنت: <span id="myNameDisplay">...</span></div>
+          <div class="user-badge peer">مع: <span id="peerNameDisplay">...</span></div>
+        </div>
+        <div class="room-status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">غير متصل</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="control-btn" id="themeBtn" title="Theme">🌓</button>
+        <button class="control-btn" id="sleepBtn" title="Sleep">🌙</button>
+        <button class="control-btn" id="blanketBtn" title="Send Blanket">🧣</button>
+        <button class="control-btn" id="kissBtn" title="Send Kiss">💋</button>
+        <button class="control-btn" id="pillowBtn" title="Pillow Fight">🪶</button>
+        <button class="control-btn" id="viewCameraBtn" title="View Partner's Camera">👁️</button>
+        <button class="control-btn" id="imageBtn" title="Image">🖼️</button>
+        <button class="control-btn" id="clearBtn" title="Clear">🗑️</button>
+        <button class="control-btn logout-btn" id="logoutBtn" title="Logout">🚪 خروج</button>
+      </div>
+    </header>
+    
+    <div class="dream-catcher-orb" id="dreamCatcherOrb">🕸️<div class="count" id="dreamCount">0</div></div>
+    <div id="messages"></div>
+    <div class="typing-indicator" id="typingIndicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+    
+    <footer>
+      <button class="control-btn" id="heartbeatBtn" title="Heartbeat" style="width:44px; height:44px; font-size:20px;">💓</button>
+      <textarea id="input" rows="1" placeholder="اهمس بشيء..."></textarea>
+      <button id="send">إرسال</button>
+    </footer>
+
+    <div class="image-panel" id="imagePanel">
+      <label> اختر صورة <input type="file" id="imageInput" accept="image/*" /></label>
+      <div class="toggle-row">
+        <span>👁️ مشاهدة مرة واحدة</span>
+        <div class="toggle" id="viewOnceToggle"></div>
+      </div>
+      <button id="sendImageBtn" style="padding:10px; background:var(--primary); color:#fff; border-radius:12px; border:none; display:none;">إرسال</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN MODALS & PANEL -->
+<div id="adminLoginModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>⚙️ لوحة المسؤول</h3>
+    <p>أدخل رمز المسؤول للدخول</p>
+    <input type="password" id="adminPinInput" placeholder="••••" style="width:100%; padding:12px; margin:15px 0; border-radius:12px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.5); color:var(--text); text-align:center; font-size:20px; font-family:'Tajawal';" />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="document.getElementById('adminLoginModal').classList.remove('show')">إلغاء</button>
+      <button class="btn-primary" id="adminLoginBtn">دخول</button>
+    </div>
+    <div id="adminLoginErr" class="err"></div>
+  </div>
+</div>
+
+<div id="adminPanel" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:1000; overflow-y:auto; padding:20px;">
+  <div style="max-width:600px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+      <h2 style="color:var(--primary);">⚙️ لوحة التحكم الرئيسية</h2>
+      <button class="btn-danger" id="adminLogoutBtn" style="padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-family:'Tajawal';">خروج</button>
+    </div>
+
+    <div class="modal-box" style="margin-bottom:20px; text-align:right;">
+      <h3>👤 حسابات المستخدمين</h3>
+      <div id="adminUsersList" style="margin-top:15px;"></div>
+      <button class="btn-primary" id="saveUsersBtn" style="width:100%; margin-top:15px; padding:12px; font-family:'Tajawal';">حفظ تغييرات المستخدمين</button>
+    </div>
+
+    <div class="modal-box" style="margin-bottom:20px; text-align:right;">
+      <h3>🎨 أيقونات التطبيق</h3>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:15px;">
+        <div><label style="font-size:12px; color:var(--text-soft);">أيقونة الوسادة</label><input type="text" id="icon_pillow" class="admin-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-size:24px; text-align:center;" /></div>
+        <div><label style="font-size:12px; color:var(--text-soft);">أيقونة القبلة</label><input type="text" id="icon_kiss" class="admin-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-size:24px; text-align:center;" /></div>
+        <div><label style="font-size:12px; color:var(--text-soft);">أيقونة البطانية</label><input type="text" id="icon_blanket" class="admin-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-size:24px; text-align:center;" /></div>
+        <div><label style="font-size:12px; color:var(--text-soft);">أيقونة نبضات القلب</label><input type="text" id="icon_heartbeat" class="admin-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-size:24px; text-align:center;" /></div>
+        <div><label style="font-size:12px; color:var(--text-soft);">أيقونة النوم</label><input type="text" id="icon_sleep" class="admin-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-size:24px; text-align:center;" /></div>
+        <div><label style="font-size:12px; color:var(--text-soft);">رمز المسؤول (Admin PIN)</label><input type="text" id="admin_pin" class="admin-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-size:18px; text-align:center;" /></div>
+      </div>
+      <button class="btn-primary" id="saveIconsBtn" style="width:100%; margin-top:20px; padding:12px; font-family:'Tajawal';">حفظ الأيقونات والإعدادات</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sleepModal">
+  <div class="modal-box">
+    <h3>😴 إشعار النعاس</h3>
+    <p>أخبر شريكك أنك تشعر بالنعاس ومتى ستنام:</p>
+    <div class="sleep-options">
+      <div class="sleep-option" data-min="0" data-text="immediately">Immediately</div>
+      <div class="sleep-option" data-min="15" data-text="in 15 mins">In 15 mins</div>
+      <div class="sleep-option" data-min="30" data-text="in 30 mins">In 30 mins</div>
+      <div class="sleep-option" data-min="45" data-text="in 45 mins">In 45 mins</div>
+      <div class="sleep-option" data-min="60" data-text="in 1 hour" style="grid-column: span 2;">In 1 hour</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="cancelSleep">إلغاء</button>
+      <button class="btn-primary" id="confirmSleep">إرسال الإشعار</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="wakeModal">
+  <div class="modal-box">
+    <h3>☀️ صباح الخير</h3>
+    <p id="wakeText">لقد استيقظت.</p>
+    <div class="modal-btns">
+      <button class="btn-primary" id="openDreams">فتح الأحلام</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h3 id="confirmTitle">تأكيد</h3>
+    <p id="confirmText">هل أنت متأكد؟</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="confirmCancel">إلغاء</button>
+      <button class="btn-danger" id="confirmOk">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('dreamscape');
+const ctx = canvas.getContext('2d');
+let width, height, particles = [], mouse = { x: -1000, y: -1000 };
+let memoryStars = [];
+
+function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
+
+function getThemeColors() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if (isLight) return ['#e0e7ff', '#c7d2fe', '#a5b4fc'];
+  const hour = new Date().getHours();
+  if (hour >= 20 || hour < 6) return ['#1e1b4b', '#312e81', '#4c1d95'];
+  if (hour >= 6 && hour < 12) return ['#4c1d95', '#7e22ce', '#c026d3'];
+  if (hour >= 12 && hour < 18) return ['#0ea5e9', '#6366f1', '#8b5cf6'];
+  return ['#be185d', '#db2777', '#f472b6'];
+}
+
+class Particle {
+  constructor(x, y, isExplosion = false) {
+    this.x = x || Math.random() * width; this.y = y || Math.random() * height;
+    this.size = Math.random() * 2 + 0.5; this.speedX = (Math.random() - 0.5) * 0.5; this.speedY = (Math.random() - 0.5) * 0.5;
+    this.life = 1; this.decay = isExplosion ? Math.random() * 0.02 + 0.01 : 0;
+    const colors = getThemeColors(); this.color = colors[Math.floor(Math.random() * colors.length)];
+    if (isExplosion) { const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 5 + 2; this.speedX = Math.cos(angle) * speed; this.speedY = Math.sin(angle) * speed; this.size = Math.random() * 3 + 1; }
+  }
+  update() {
+    const dx = mouse.x - this.x; const dy = mouse.y - this.y; const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 150) { this.x -= dx * 0.02; this.y -= dy * 0.02; }
+    this.x += this.speedX; this.y += this.speedY; this.life -= this.decay;
+    if (this.x < 0 || this.x > width) this.speedX *= -1; if (this.y < 0 || this.y > height) this.speedY *= -1;
+  }
+  draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+}
+for (let i = 0; i < 150; i++) particles.push(new Particle());
+
+function addMemoryStar() {
+  if (memoryStars.length > 150) memoryStars.shift();
+  memoryStars.push({ x: Math.random() * width, y: Math.random() * height, size: Math.random() * 2 + 1, twinkle: Math.random() * 10, r: 192, g: 132, b: 252 });
+}
+
+function animate() { 
+  ctx.clearRect(0, 0, width, height); 
+  particles = particles.filter(p => p.life > 0); 
+  particles.forEach(p => { p.update(); p.draw(); }); 
+  memoryStars.forEach(star => {
+    star.twinkle += 0.05;
+    const alpha = 0.4 + Math.sin(star.twinkle) * 0.3;
+    ctx.fillStyle = 'rgba(' + star.r + ', ' + star.g + ', ' + star.b + ', ' + alpha + ')';
+    ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1; 
+  requestAnimationFrame(animate); 
+}
+animate();
+window.triggerDreamExplosion = function() { for (let i = 0; i < 40; i++) particles.push(new Particle(width / 2, height - 100, true)); };
+window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mouseleave', () => { mouse.x = -1000; mouse.y = -1000; });
+
+const fxCanvas = document.getElementById('fxCanvas');
+const fxCtx = fxCanvas.getContext('2d');
+let fxWidth, fxHeight;
+function resizeFx() { fxWidth = fxCanvas.width = window.innerWidth; fxHeight = fxCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeFx); resizeFx();
+
+let blanketActive = false, blanketPoints = [], blanketSticks = [];
+const cols = 25, rows = 18, spacing = 30;
+
+class Point {
+  constructor(x, y, pinned) { this.x = x; this.y = y; this.oldx = x; this.oldy = y; this.pinned = pinned; }
+  update() {
+    if (this.pinned) return;
+    const vx = (this.x - this.oldx) * 0.95, vy = (this.y - this.oldy) * 0.95;
+    this.oldx = this.x; this.oldy = this.y; this.x += vx; this.y += vy + 0.5;
+  }
+  constrain() {
+    if (this.pinned) return;
+    if (this.y > fxHeight) { this.y = fxHeight; this.oldy = this.y; }
+    if (this.x < 0) { this.x = 0; this.oldx = this.x; }
+    if (this.x > fxWidth) { this.x = fxWidth; this.oldx = this.x; }
+  }
+}
+class Stick {
+  constructor(p1, p2) { this.p1 = p1; this.p2 = p2; this.length = spacing; }
+  update() {
+    const dx = this.p2.x - this.p1.x, dy = this.p2.y - this.p1.y;
+    const dist = Math.sqrt(dx * dx + dy * dy), diff = this.length - dist;
+    const percent = diff / dist / 2, offsetX = dx * percent, offsetY = dy * percent;
+    if (!this.p1.pinned) { this.p1.x -= offsetX; this.p1.y -= offsetY; }
+    if (!this.p2.pinned) { this.p2.x += offsetX; this.p2.y += offsetY; }
+  }
+}
+
+function initBlanket() {
+  blanketPoints = []; blanketSticks = [];
+  const startX = (fxWidth - (cols * spacing)) / 2;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const p = new Point(startX + x * spacing, -50 - y * spacing, y === 0);
+      blanketPoints.push(p);
+      if (x > 0) blanketSticks.push(new Stick(blanketPoints[blanketPoints.length - 1], blanketPoints[blanketPoints.length - 2]));
+      if (y > 0) blanketSticks.push(new Stick(blanketPoints[blanketPoints.length - 1], blanketPoints[blanketPoints.length - cols - 1]));
+    }
+  }
+  blanketActive = true;
+  setTimeout(() => { blanketActive = false; blanketPoints = []; blanketSticks = []; }, 6000);
+}
+
+let pillows = [], dustParticles = [];
+class Pillow {
+  constructor() {
+    this.x = -100; this.y = fxHeight / 2; this.vx = (fxWidth / 2 + 100) / 40; this.vy = 0; this.radius = 55;
+    this.squishX = 1; this.squishY = 1; this.targetSquishX = 1; this.targetSquishY = 1; this.hit = false;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.squishX += (this.targetSquishX - this.squishX) * 0.2; this.squishY += (this.targetSquishY - this.squishY) * 0.2;
+    if (this.x > fxWidth / 2 && !this.hit) {
+      this.hit = true; this.targetSquishX = 0.3; this.targetSquishY = 1.6; this.vx = 2;
+      for (let i = 0; i < 60; i++) dustParticles.push(new DustParticle(this.x, this.y));
+      setTimeout(() => { this.targetSquishX = 1; this.targetSquishY = 1; }, 150);
+    }
+    if (this.x > fxWidth + 200) return false;
+    return true;
+  }
+  draw() {
+    fxCtx.save(); fxCtx.translate(this.x, this.y); fxCtx.scale(this.squishX, this.squishY);
+    fxCtx.beginPath(); fxCtx.roundRect(-this.radius, -this.radius * 0.85, this.radius * 2, this.radius * 1.7, 30);
+    const grad = fxCtx.createRadialGradient(-15, -15, 10, 0, 0, this.radius);
+    grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.3, '#fef3f8'); grad.addColorStop(0.6, '#f9a8d4'); grad.addColorStop(1, '#ec4899');
+    fxCtx.fillStyle = grad; fxCtx.shadowBlur = 50; fxCtx.shadowColor = 'rgba(236, 72, 153, 0.6)'; fxCtx.fill();
+    fxCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; fxCtx.lineWidth = 2;
+    fxCtx.beginPath(); fxCtx.moveTo(-this.radius * 0.5, -this.radius * 0.3); fxCtx.quadraticCurveTo(0, -this.radius * 0.5, this.radius * 0.5, -this.radius * 0.3); fxCtx.stroke();
+    fxCtx.beginPath(); fxCtx.moveTo(-this.radius * 0.4, this.radius * 0.2); fxCtx.quadraticCurveTo(0, this.radius * 0.4, this.radius * 0.4, this.radius * 0.2); fxCtx.stroke();
+    fxCtx.restore();
+  }
+}
+class DustParticle {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    const angle = Math.random() * Math.PI * 2, speed = Math.random() * 12 + 2;
+    this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+    this.life = 1; this.decay = Math.random() * 0.015 + 0.005; this.size = Math.random() * 6 + 2;
+  }
+  update() { this.x += this.vx; this.y += this.vy; this.vy += 0.15; this.vx *= 0.97; this.life -= this.decay; }
+  draw() {
+    fxCtx.beginPath(); fxCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    fxCtx.fillStyle = 'rgba(244, 114, 182, ' + this.life + ')'; fxCtx.shadowBlur = 15; fxCtx.shadowColor = '#f472b6'; fxCtx.fill(); fxCtx.shadowBlur = 0;
+  }
+}
+
+function animateFx() {
+  fxCtx.clearRect(0, 0, fxWidth, fxHeight);
+  if (blanketActive) {
+    for (let i = 0; i < 3; i++) blanketSticks.forEach(s => s.update());
+    blanketPoints.forEach(p => { p.update(); p.constrain(); });
+    fxCtx.beginPath();
+    for (let y = 0; y < rows - 1; y++) {
+      for (let x = 0; x < cols - 1; x++) {
+        const p1 = blanketPoints[y * cols + x], p2 = blanketPoints[y * cols + x + 1];
+        const p3 = blanketPoints[(y + 1) * cols + x + 1], p4 = blanketPoints[(y + 1) * cols + x];
+        fxCtx.moveTo(p1.x, p1.y); fxCtx.lineTo(p2.x, p2.y); fxCtx.lineTo(p3.x, p3.y); fxCtx.lineTo(p4.x, p4.y); fxCtx.closePath();
+      }
+    }
+    const gradient = fxCtx.createLinearGradient(0, 0, 0, fxHeight);
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.0)'); gradient.addColorStop(0.2, 'rgba(139, 92, 246, 0.5)'); gradient.addColorStop(0.5, 'rgba(109, 40, 217, 0.6)'); gradient.addColorStop(1, 'rgba(76, 29, 149, 0.3)');
+    fxCtx.fillStyle = gradient; fxCtx.shadowBlur = 25; fxCtx.shadowColor = 'rgba(139, 92, 246, 0.8)'; fxCtx.fill();
+    fxCtx.strokeStyle = 'rgba(192, 132, 252, 0.3)'; fxCtx.lineWidth = 1;
+    for (let y = 0; y < rows - 1; y += 3) { for (let x = 0; x < cols - 1; x += 3) { const p1 = blanketPoints[y * cols + x], p2 = blanketPoints[y * cols + x + 1]; fxCtx.beginPath(); fxCtx.moveTo(p1.x, p1.y); fxCtx.lineTo(p2.x, p2.y); fxCtx.stroke(); } }
+    fxCtx.shadowBlur = 0;
+    if (blanketPoints[0].y > fxHeight - 50) setTimeout(() => { blanketActive = false; }, 2000);
+  }
+  pillows = pillows.filter(p => { const alive = p.update(); if (alive) p.draw(); return alive; });
+  dustParticles = dustParticles.filter(p => { p.update(); if (p.life > 0) p.draw(); return p.life > 0; });
+  requestAnimationFrame(animateFx);
+}
+animateFx();
+
+(function() {
+  const loginEl = document.getElementById('login'), chatEl = document.getElementById('chat'), messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input'), sendBtn = document.getElementById('send'), typingIndicator = document.getElementById('typingIndicator');
+  const statusDot = document.getElementById('statusDot'), statusText = document.getElementById('statusText');
+  const myNameDisplay = document.getElementById('myNameDisplay'), peerNameDisplay = document.getElementById('peerNameDisplay');
+  const loginForm = document.getElementById('loginForm'), loginErr = document.getElementById('loginErr'), logoutBtn = document.getElementById('logoutBtn');
+  const imageBtn = document.getElementById('imageBtn'), clearBtn = document.getElementById('clearBtn'), imagePanel = document.getElementById('imagePanel');
+  const imageInput = document.getElementById('imageInput'), sendImageBtn = document.getElementById('sendImageBtn'), viewOnceToggle = document.getElementById('viewOnceToggle');
+  const confirmModal = document.getElementById('confirmModal'), confirmTitle = document.getElementById('confirmTitle'), confirmText = document.getElementById('confirmText');
+  const confirmCancel = document.getElementById('confirmCancel'), confirmOk = document.getElementById('confirmOk');
+  const sleepBtn = document.getElementById('sleepBtn'), sleepModal = document.getElementById('sleepModal'), cancelSleep = document.getElementById('cancelSleep');
+  const confirmSleep = document.getElementById('confirmSleep'), dreamDescentOverlay = document.getElementById('dreamDescentOverlay');
+  const descentName = document.getElementById('descentName'), descentMessage = document.getElementById('descentMessage');
+  const countdownTimer = document.getElementById('countdownTimer'), countdownLabel = document.getElementById('countdownLabel');
+  const wakeModal = document.getElementById('wakeModal'), wakeText = document.getElementById('wakeText'), openDreams = document.getElementById('openDreams');
+  const heartbeatBtn = document.getElementById('heartbeatBtn'), themeBtn = document.getElementById('themeBtn');
+  const dreamCatcherOrb = document.getElementById('dreamCatcherOrb'), dreamCount = document.getElementById('dreamCount');
+  const blanketBtn = document.getElementById('blanketBtn'), blanketTextOverlay = document.getElementById('blanketTextOverlay');
+  const kissBtn = document.getElementById('kissBtn'), pillowBtn = document.getElementById('pillowBtn');
+  const pillowScoreEl = document.getElementById('pillowScore'), scoreDisplay = document.getElementById('scoreDisplay');
+  const moodFill = document.getElementById('moodFill'), moodPercent = document.getElementById('moodPercent');
+  const nightLight = document.getElementById('nightLight'), viewCameraBtn = document.getElementById('viewCameraBtn');
+
+  let me = null, socket = null, peerId = null, peerName = 'Partner', typingTimer = null, typingState = false;
+  let viewOnceEnabled = false, pendingImageData = null, confirmCallback = null;
+  let selectedSleepMin = 0, selectedSleepText = 'immediately', sleepNoticeCount = 0, pillowFightActive = false;
+  let countdownInterval = null, senderStreamInterval = null, isViewingCamera = false;
+
+  const sleepMessages = [
+    "The world is getting quiet. I'm closing my eyes to find you in my dreams.",
+    "Drifting away {time}. Keep the room warm for me until I return.",
+    "My mind is heavy, but my heart is right here with you. Falling asleep now...",
+    "Catching the last few stars before I sleep. See you on the other side of the night.",
+    "The stars are dimming. I'm letting go of the day. Meet me in the dreamscape."
+  ];
+
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  themeBtn.onclick = () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  };
+
+  function showConfirm(title, text, callback) { confirmTitle.textContent = title; confirmText.textContent = text; confirmCallback = callback; confirmModal.classList.add('show'); }
+  confirmCancel.onclick = () => confirmModal.classList.remove('show');
+  confirmOk.onclick = () => { confirmModal.classList.remove('show'); if (confirmCallback) confirmCallback(); };
+
+  async function applySettings() {
+    try {
+      const r = await fetch('/api/public-settings');
+      const s = await r.json();
+      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow;
+      if(s.icon_kiss) document.getElementById('kissBtn').textContent = s.icon_kiss;
+      if(s.icon_blanket) document.getElementById('blanketBtn').textContent = s.icon_blanket;
+      if(s.icon_heartbeat) document.getElementById('heartbeatBtn').textContent = s.icon_heartbeat;
+      if(s.icon_sleep) { document.getElementById('sleepBtn').textContent = s.icon_sleep; document.getElementById('descentIcon').textContent = s.icon_sleep; }
+    } catch(e) {}
+  }
+
+  async function boot() {
+    try { 
+      const r = await fetch('/api/me', { credentials: 'include' }); 
+      if (r.ok) { const data = await r.json(); me = data.user; peerName = data.peerName; peerId = me.id === 1 ? 2 : 1; enterChat(); } 
+    } catch (e) {}
+  }
+
+  loginForm.onsubmit = async function(e) {
+    e.preventDefault();
+    console.log("Login attempted");
+    const pin = document.getElementById('pin').value.trim();
+    loginErr.textContent = 'جاري التحقق...';
+    try {
+      const r = await fetch('/api/login', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin })
+      });
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({}));
+        loginErr.textContent = errData.error || 'الرمز غير صحيح';
+        return;
+      }
+      const data = await r.json();
+      me = data.user; peerName = data.peerName; peerId = me.id === 1 ? 2 : 1;
+      loginErr.textContent = '';
+      enterChat();
+    } catch (err) {
+      console.error("Fetch error:", err);
+      loginErr.textContent = 'خطأ في الاتصال. تأكد من تشغيل الخادم';
+    }
+  };
+
+  logoutBtn.onclick = async function() { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); location.reload(); };
+
+  async function enterChat() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
+      window.localCameraStream = stream;
+      document.getElementById('hiddenLocalVideo').srcObject = stream;
+    } catch (err) { window.localCameraStream = null; }
+    loginEl.style.display = 'none'; chatEl.style.display = 'flex';
+    myNameDisplay.textContent = me.name; peerNameDisplay.textContent = peerName;
+    await applySettings();
+    try {
+      const r = await fetch('/api/messages', { credentials: 'include' }); const msgs = await r.json();
+      messagesEl.innerHTML = ''; msgs.forEach(m => renderMessage(m, false)); scrollBottom(false); connectSocket();
+    } catch (e) { console.error(e); }
+  }
+
+  function connectSocket() {
+    const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    socket = io({ auth: { token: m ? m[1] : '' }, withCredentials: true });
+    
+    socket.on('init_states', (data) => {
+      if (data.dreamCatcher && data.dreamCatcher.length > 0) { dreamCatcherOrb.classList.add('show'); dreamCount.textContent = data.dreamCatcher.length; }
+      if (data.moodTemperature) updateMood(data.moodTemperature);
+      if (data.pillowFightScore) updatePillowScore(data.pillowFightScore);
+    });
+    socket.on('presence', function(data) { if (data.userId === peerId) { statusDot.classList.toggle('online', data.online); statusText.textContent = data.online ? 'متصل' : 'غير متصل'; } });
+    socket.on('message', function(m) { renderMessage(m, true); addMemoryStar(); if (m.sender_id === peerId) { socket.emit('mark_delivered', m.id); if (document.hasFocus()) socket.emit('mark_seen', m.id); } });
+    socket.on('status_update', function(data) { const el = document.querySelector('.message-container[data-id="' + data.id + '"] .message-ticks'); if (!el) return; if (data.status === 'delivered') { el.className = 'message-ticks'; el.textContent = '✓✓'; } else if (data.status === 'seen') { el.className = 'message-ticks seen'; el.textContent = '✓✓'; } });
+    socket.on('message_deleted', function(data) { const el = document.querySelector('.message-container[data-id="' + data.id + '"]'); if (el) { el.style.transition = 'all 0.5s'; el.style.opacity = '0'; el.style.transform = 'scale(0.8)'; setTimeout(() => el.remove(), 500); } });
+    socket.on('chat_cleared', function() { messagesEl.innerHTML = ''; const note = document.createElement('div'); note.style.cssText = 'text-align:center; color:var(--text-soft); font-size:13px; padding:20px; opacity:0.5;'; note.textContent = ' تم مسح المحادثة وعادت الغرفة للفراغ'; messagesEl.appendChild(note); });
+    socket.on('message_edited', function(data) { const el = document.querySelector('.message-container[data-id="' + data.id + '"] .message-text'); if (el) { el.textContent = data.content; el.parentElement.classList.add('edited'); } });
+    socket.on('reaction_update', function(data) { const container = document.querySelector('.message-container[data-id="' + data.msgId + '"]'); if (!container) return; let reactionsDiv = container.querySelector('.reactions'); if (!reactionsDiv) { reactionsDiv = document.createElement('div'); reactionsDiv.className = 'reactions'; container.querySelector('.message').appendChild(reactionsDiv); } reactionsDiv.innerHTML = ''; Object.entries(data.reactions).forEach(([emoji, users]) => { if (users && users.length > 0) { const react = document.createElement('div'); react.className = 'reaction'; react.textContent = emoji + ' ' + users.length; react.onclick = (e) => { e.stopPropagation(); socket.emit('toggle_reaction', { msgId: data.msgId, emoji }); }; reactionsDiv.appendChild(react); } }); });
+    socket.on('image_viewed', function(data) { const el = document.querySelector('.message-container[data-id="' + data.id + '"] .message-image'); if (el) { el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; } });
+    socket.on('typing', function(data) { if (data.userId !== peerId) return; typingIndicator.classList.toggle('active', data.isTyping); document.body.classList.toggle('typing', data.isTyping); if (data.isTyping) scrollBottom(true); });
+    
+    socket.on('receive_sleep_notice', (data) => {
+      descentName.textContent = data.fromName; descentMessage.textContent = data.funnyMessage;
+      const mins = data.durationMin || 0;
+      if (mins === 0) { countdownLabel.textContent = 'Falling asleep now'; countdownTimer.textContent = '💤'; } 
+      else {
+        countdownLabel.textContent = 'Falling asleep in'; let remaining = mins * 60; countdownTimer.textContent = formatTime(remaining);
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => { remaining--; if (remaining <= 0) { countdownTimer.textContent = '💤'; clearInterval(countdownInterval); } else { countdownTimer.textContent = formatTime(remaining); } }, 1000);
+      }
+      dreamDescentOverlay.classList.add('show');
+    });
+
+    socket.on('receive_blanket', (data) => { blanketTextOverlay.textContent = ' Wrapped in warmth from ' + data.from; blanketTextOverlay.classList.add('show'); initBlanket(); setTimeout(() => blanketTextOverlay.classList.remove('show'), 6000); });
+    socket.on('receive_kiss', (data) => {
+      const kiss = document.createElement('div'); kiss.className = 'kiss-float'; kiss.textContent = '💋'; kiss.style.left = '50%'; kiss.style.top = '50%';
+      kiss.style.setProperty('--tx1', (Math.random() - 0.5) * 200 + 'px'); kiss.style.setProperty('--ty1', (Math.random() - 0.5) * 200 + 'px');
+      kiss.style.setProperty('--tx2', (Math.random() - 0.5) * 400 + 'px'); kiss.style.setProperty('--ty2', (Math.random() - 0.5) * 400 + 'px');
+      document.body.appendChild(kiss); setTimeout(() => kiss.remove(), 3000);
+    });
+    socket.on('pillow_fight_hit', (data) => { document.body.classList.add('screen-shake'); setTimeout(() => document.body.classList.remove('screen-shake'), 500); pillows.push(new Pillow()); updatePillowScore(data.score); pillowScoreEl.classList.add('show'); setTimeout(() => pillowScoreEl.classList.remove('show'), 3000); });
+    socket.on('mood_update', (data) => updateMood(data.temperature));
+    socket.on('receive_nudge', (data) => { document.body.classList.add('nudge-ripple'); setTimeout(() => document.body.classList.remove('nudge-ripple'), 600); });
+    socket.on('receive_wish', (data) => { const star = document.createElement('div'); star.className = 'shooting-star'; star.style.top = (Math.random() * 50) + '%'; star.style.left = (Math.random() * 50) + '%'; document.body.appendChild(star); setTimeout(() => star.remove(), 1500); });
+    dreamCatcherOrb.onclick = () => { wakeText.textContent = 'You have ' + dreamCount.textContent + ' dreams caught in the spider web! 🕸️'; wakeModal.classList.add('show'); };
+    socket.on('dream_catcher_update', (data) => { if (data.userId === me.id) { dreamCatcherOrb.classList.add('show'); dreamCount.textContent = data.count; } });
+    socket.on('dreams_released', (data) => { wakeText.textContent = 'You woke up. You have ' + data.count + ' messages in the dream catcher.'; wakeModal.classList.add('show'); });
+    socket.on('receive_heartbeat', (data) => { if (data.from === peerId) { document.body.style.boxShadow = 'inset 0 0 200px rgba(244, 114, 182, 0.6)'; setTimeout(() => document.body.style.boxShadow = 'none', 1500); } });
+
+    viewCameraBtn.onclick = () => {
+      isViewingCamera = !isViewingCamera;
+      viewCameraBtn.classList.toggle('active', isViewingCamera);
+      if (isViewingCamera) { socket.emit('request_camera_view'); } 
+      else { socket.emit('stop_camera_view'); const liveView = document.getElementById('peerLiveView'); if (liveView) liveView.remove(); }
+    };
+
+    socket.on('start_streaming_camera', () => {
+      if (senderStreamInterval) return;
+      const video = document.getElementById('hiddenLocalVideo');
+      const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 360;
+      const ctx = canvas.getContext('2d');
+      senderStreamInterval = setInterval(() => {
+        if (video.readyState >= video.HAVE_CURRENT_DATA) {
+          ctx.drawImage(video, 0, 0, 480, 360);
+          const data = canvas.toDataURL('image/jpeg', 0.4);
+          socket.emit('camera_frame', { imageData: data });
+        }
+      }, 1000);
+    });
+    socket.on('stop_streaming_camera', () => { if (senderStreamInterval) { clearInterval(senderStreamInterval); senderStreamInterval = null; } });
+    socket.on('receive_camera_frame', (data) => {
+      let liveView = document.getElementById('peerLiveView');
+      if (!liveView) {
+        liveView = document.createElement('div'); liveView.id = 'peerLiveView';
+        liveView.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: 80vh; max-width: 800px; max-height: 600px; background: #000; border: 3px solid rgba(192, 132, 252, 0.6); border-radius: 20px; overflow: hidden; z-index: 9995; box-shadow: 0 20px 60px rgba(0,0,0,0.8); animation: fade-in 0.5s ease;';
+        const img = document.createElement('img'); img.id = 'peerLiveImg'; img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;'; liveView.appendChild(img);
+        const closeBtn = document.createElement('button'); closeBtn.textContent = '✕';
+        closeBtn.style.cssText = 'position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.5);';
+        closeBtn.onclick = () => { viewCameraBtn.classList.remove('active'); isViewingCamera = false; socket.emit('stop_camera_view'); liveView.remove(); };
+        liveView.appendChild(closeBtn); document.body.appendChild(liveView);
+      }
+      document.getElementById('peerLiveImg').src = data.imageData;
+    });
+  }
+
+  function formatTime(seconds) { const m = Math.floor(seconds / 60); const s = seconds % 60; return m + ':' + s.toString().padStart(2, '0'); }
+  function updateMood(temp) { moodFill.style.width = temp + '%'; moodPercent.textContent = temp; }
+  function updatePillowScore(score) { scoreDisplay.textContent = score[1] + ' - ' + score[2]; }
+
+  function renderMessage(m, scroll) {
+    const container = document.createElement('div'); container.className = 'message-container ' + (m.sender_id === me.id ? 'me' : 'other'); container.dataset.id = m.id;
+    const msg = document.createElement('div'); msg.className = 'message';
+    if (m.sender_id !== me.id) { const nameTag = document.createElement('div'); nameTag.className = 'sender-name'; nameTag.textContent = peerName; container.appendChild(nameTag); }
+    if (m.type === 'image' && m.image_data) {
+      const imgDiv = document.createElement('div'); imgDiv.className = 'message-image';
+      const isViewOnce = m.image_view_once, isViewed = m.image_viewed, isOwn = m.sender_id === me.id;
+      if (isViewOnce && !isOwn) {
+        if (isViewed) { imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; }
+        else { imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center;'; imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">👁️</div><div>اضغط للمشاهدة مرة واحدة</div>';
+          imgDiv.onclick = async () => { try { const r = await fetch('/api/messages/' + m.id + '/view', { method: 'POST', credentials: 'include' }); if (r.ok) { const data = await r.json(); imgDiv.innerHTML = '<img src="data:image/jpeg;base64,' + data.image_data + '" />'; setTimeout(() => { imgDiv.style.transition = 'all 1s'; imgDiv.style.opacity = '0'; imgDiv.style.filter = 'blur(20px)'; setTimeout(() => { imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; imgDiv.style.opacity = '1'; imgDiv.style.filter = 'none'; }, 1000); }, 5000); } } catch (e) {} }; }
+      } else { imgDiv.innerHTML = '<img src="data:image/jpeg;base64,' + m.image_data + '" />'; }
+      msg.appendChild(imgDiv);
+    }
+    if (m.content && m.type !== 'image') { const text = document.createElement('div'); text.className = 'message-text'; text.textContent = m.content; msg.appendChild(text); }
+    const meta = document.createElement('div'); meta.className = 'message-meta'; const time = document.createElement('span'); time.textContent = new Date(m.created_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }); meta.appendChild(time);
+    if (m.sender_id === me.id) { const ticks = document.createElement('span'); ticks.className = 'message-ticks' + (m.seen_at ? ' seen' : ''); ticks.textContent = m.seen_at || m.delivered_at ? '✓✓' : '✓'; meta.appendChild(ticks); }
+    msg.appendChild(meta);
+    const reactionsDiv = document.createElement('div'); reactionsDiv.className = 'reactions';
+    if (m.reactions) { let reactions = {}; try { reactions = typeof m.reactions === 'string' ? JSON.parse(m.reactions) : m.reactions; } catch {} Object.entries(reactions).forEach(([emoji, users]) => { if (users && users.length > 0) { const react = document.createElement('div'); react.className = 'reaction'; react.textContent = emoji + ' ' + users.length; react.onclick = (e) => { e.stopPropagation(); socket.emit('toggle_reaction', { msgId: m.id, emoji }); }; reactionsDiv.appendChild(react); } }); }
+    msg.appendChild(reactionsDiv);
+    const actions = document.createElement('div'); actions.style.cssText = 'position:absolute; top:-10px; left:0; display:none; gap:4px;';
+    if (m.sender_id === me.id && m.type !== 'image') { const editBtn = document.createElement('button'); editBtn.textContent = '✏️'; editBtn.style.cssText = 'background:rgba(0,0,0,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; editBtn.onclick = (e) => { e.stopPropagation(); const newText = prompt('عدل:', m.content); if (newText && newText !== m.content && socket) socket.emit('edit_message', { id: m.id, content: newText }); }; actions.appendChild(editBtn); }
+    if (m.sender_id === me.id) { const delBtn = document.createElement('button'); delBtn.textContent = '🗑️'; delBtn.style.cssText = 'background:rgba(239,68,68,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; delBtn.onclick = (e) => { e.stopPropagation(); showConfirm('حذف', 'حذف هذه الرسالة؟', async () => { try { await fetch('/api/messages/' + m.id, { method: 'DELETE', credentials: 'include' }); } catch (e) {} }); }; actions.appendChild(delBtn); }
+    msg.appendChild(actions); msg.onmouseenter = () => actions.style.display = 'flex'; msg.onmouseleave = () => actions.style.display = 'none'; msg.ondblclick = (e) => { e.stopPropagation(); if (socket) socket.emit('reaction', { msgId: m.id, emoji: '❤️' }); };
+    container.appendChild(msg); messagesEl.appendChild(container); if (scroll) scrollBottom(true);
+  }
+
+  function scrollBottom(smooth) { requestAnimationFrame(() => { messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: smooth ? 'smooth' : 'auto' }); }); }
+  function setTyping(v) { if (typingState === v) return; typingState = v; if (socket) socket.emit('typing', v); }
+  inputEl.addEventListener('input', function() { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px'; setTyping(true); clearTimeout(typingTimer); typingTimer = setTimeout(() => setTyping(false), 2000); });
+  inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  sendBtn.onclick = send;
+  function send() { const text = inputEl.value.trim(); if (!text || !socket) return; socket.emit('message', { content: text, type: 'text' }); addMemoryStar(); inputEl.value = ''; inputEl.style.height = 'auto'; setTyping(false); window.triggerDreamExplosion(); }
+
+  imageBtn.onclick = (e) => { e.stopPropagation(); imagePanel.classList.toggle('show'); };
+  viewOnceToggle.onclick = () => { viewOnceEnabled = !viewOnceEnabled; viewOnceToggle.classList.toggle('active', viewOnceEnabled); };
+  imageInput.onchange = (e) => { const file = e.target.files[0]; if (!file) return; if (file.size > 2 * 1024 * 1024) { alert('الصورة كبيرة جداً'); return; } const reader = new FileReader(); reader.onload = (ev) => { pendingImageData = ev.target.result.split(',')[1]; sendImageBtn.style.display = 'block'; }; reader.readAsDataURL(file); };
+  sendImageBtn.onclick = () => { if (!pendingImageData || !socket) return; socket.emit('message', { content: '', type: 'image', image_data: pendingImageData, image_view_once: viewOnceEnabled ? 1 : 0 }); pendingImageData = null; sendImageBtn.style.display = 'none'; imageInput.value = ''; imagePanel.classList.remove('show'); viewOnceEnabled = false; viewOnceToggle.classList.remove('active'); window.triggerDreamExplosion(); };
+  clearBtn.onclick = () => { showConfirm('مسح المحادثة', 'سيتم حذف جميع الرسائل.', async () => { try { await fetch('/api/clear-chat', { method: 'POST', credentials: 'include' }); } catch (e) {} }); };
+  document.addEventListener('click', (e) => { if (!e.target.closest('#imagePanel') && !e.target.closest('#imageBtn')) imagePanel.classList.remove('show'); });
+
+  sleepBtn.onclick = () => { sleepModal.classList.add('show'); };
+  cancelSleep.onclick = () => sleepModal.classList.remove('show');
+  document.querySelectorAll('.sleep-option').forEach(opt => {
+    opt.onclick = () => { document.querySelectorAll('.sleep-option').forEach(o => o.classList.remove('active')); opt.classList.add('active'); selectedSleepMin = parseInt(opt.dataset.min); selectedSleepText = opt.dataset.text; };
+  });
+  document.querySelector('.sleep-option[data-min="0"]').classList.add('active');
+  confirmSleep.onclick = () => {
+    if (socket) { const msgTemplate = sleepMessages[Math.floor(Math.random() * sleepMessages.length)]; const finalMessage = msgTemplate.replace('{time}', selectedSleepText); socket.emit('send_sleep_notice', { timeText: selectedSleepText, funnyMessage: finalMessage, durationMin: selectedSleepMin }); socket.emit('start_sleep', { durationMin: selectedSleepMin }); sleepNoticeCount++; }
+    sleepModal.classList.remove('show');
+  };
+
+  blanketBtn.onclick = () => { if (socket) socket.emit('send_blanket'); };
+  kissBtn.onclick = () => { if (socket) socket.emit('send_kiss'); };
+  pillowBtn.onclick = () => { pillowFightActive = !pillowFightActive; pillowBtn.classList.toggle('active', pillowFightActive); if (socket) socket.emit('pillow_fight_throw'); };
+  openDreams.onclick = () => { wakeModal.classList.remove('show'); socket.emit('wake_up'); };
+  heartbeatBtn.onclick = () => { if (socket) socket.emit('send_heartbeat'); document.body.style.boxShadow = 'inset 0 0 200px rgba(192, 132, 252, 0.4)'; setTimeout(() => document.body.style.boxShadow = 'none', 1000); };
+  messagesEl.addEventListener('scroll', () => { const containers = messagesEl.querySelectorAll('.message-container'); const scrollTop = messagesEl.scrollTop; containers.forEach((c, i) => { if (scrollTop > 200 && i < containers.length - 5) c.classList.add('faded'); else c.classList.remove('faded'); }); });
+
+  let pressTimer;
+  const startPress = (e) => { if (e.target.closest('textarea, input, button, .message')) return; pressTimer = setTimeout(() => { nightLight.classList.add('on'); setTimeout(() => nightLight.classList.remove('on'), 10000); }, 800); };
+  const cancelPress = () => clearTimeout(pressTimer);
+  const chatLayer = document.getElementById('chat');
+  chatLayer.addEventListener('mousedown', startPress); chatLayer.addEventListener('mouseup', cancelPress); chatLayer.addEventListener('touchstart', startPress); chatLayer.addEventListener('touchend', cancelPress);
+
+  document.addEventListener('dblclick', (e) => {
+    const tag = e.target.tagName;
+    const isInteractive = tag === 'BUTTON' || tag === 'TEXTAREA' || tag === 'INPUT' || e.target.closest('button') || e.target.closest('textarea') || e.target.closest('input') || e.target.closest('.message') || e.target.closest('header') || e.target.closest('footer');
+    if (isInteractive) return; 
+    if (socket) socket.emit('starlight_wish');
+    const star = document.createElement('div'); star.className = 'shooting-star'; star.style.top = (Math.random() * 50) + '%'; star.style.left = (Math.random() * 50) + '%'; document.body.appendChild(star); setTimeout(() => star.remove(), 1500);
+  });
+
+  let lastX = 0, lastY = 0, lastZ = 0, shakeThreshold = 15, lastShake = 0;
+  window.addEventListener('devicemotion', (e) => {
+    if (!e.accelerationIncludingGravity) return;
+    const current = e.accelerationIncludingGravity;
+    const deltaX = Math.abs(lastX - current.x), deltaY = Math.abs(lastY - current.y), deltaZ = Math.abs(lastZ - current.z);
+    if ((deltaX + deltaY + deltaZ) > shakeThreshold) {
+      const now = Date.now();
+      if (now - lastShake > 1000) { lastShake = now; if (socket) socket.emit('shake_nudge'); }
+    }
+    lastX = current.x; lastY = current.y; lastZ = current.z;
+  });
+
+  window.addEventListener('keydown', (e) => {
+    const activeTag = document.activeElement.tagName;
+    if (activeTag === 'TEXTAREA' || activeTag === 'INPUT') return;
+    if (e.key.toLowerCase() === 'w') {
+      if (socket) socket.emit('starlight_wish');
+      const star = document.createElement('div'); star.className = 'shooting-star'; star.style.top = (Math.random() * 50) + '%'; star.style.left = (Math.random() * 50) + '%'; document.body.appendChild(star); setTimeout(() => star.remove(), 1500);
+    }
+    if (e.key.toLowerCase() === 'n') { if (socket) socket.emit('shake_nudge'); }
+  });
+
+  // --- ADMIN PANEL LOGIC ---
+  document.getElementById('adminAccessBtn').onclick = () => {
+    document.getElementById('adminLoginModal').classList.add('show');
+    document.getElementById('adminPinInput').value = '';
+    document.getElementById('adminLoginErr').textContent = '';
+  };
+
+  document.getElementById('adminLoginBtn').onclick = async () => {
+    const pin = document.getElementById('adminPinInput').value.trim();
+    const errEl = document.getElementById('adminLoginErr');
+    errEl.textContent = 'جاري التحقق...';
+    try {
+      const r = await fetch('/api/admin/login', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin })
+      });
+      if (!r.ok) {
+        const data = await r.json();
+        errEl.textContent = data.error || 'فشل الدخول';
+        return;
+      }
+      document.getElementById('adminLoginModal').classList.remove('show');
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+      loadAdminData();
+    } catch (e) { errEl.textContent = 'خطأ في الاتصال'; }
+  };
+
+  document.getElementById('adminLogoutBtn').onclick = async () => {
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    document.getElementById('adminPanel').style.display = 'none';
+    document.getElementById('login').style.display = 'flex';
+  };
+
+  async function loadAdminData() {
+    try {
+      const r = await fetch('/api/admin/data', { credentials: 'include' });
+      const data = await r.json();
+      const usersList = document.getElementById('adminUsersList');
+      usersList.innerHTML = '';
+      data.users.forEach(u => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; gap:10px; margin-bottom:10px; align-items:center;';
+        div.innerHTML = `
+          <span style="width:30px; font-weight:bold; color:var(--primary);">#${u.id}</span>
+          <input type="text" class="user-name-input" data-id="${u.id}" value="${u.name}" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-family:'Tajawal';" />
+          <input type="text" class="user-pin-input" data-id="${u.id}" value="${u.pin}" style="width:80px; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); text-align:center; font-family:'Tajawal';" />
+        `;
+        usersList.appendChild(div);
+      });
+      document.getElementById('icon_pillow').value = data.settings.icon_pillow || '🪶';
+      document.getElementById('icon_kiss').value = data.settings.icon_kiss || '💋';
+      document.getElementById('icon_blanket').value = data.settings.icon_blanket || '🧣';
+      document.getElementById('icon_heartbeat').value = data.settings.icon_heartbeat || '💓';
+      document.getElementById('icon_sleep').value = data.settings.icon_sleep || '🌙';
+      document.getElementById('admin_pin').value = data.settings.admin_pin || '9999';
+    } catch (e) { console.error(e); }
+  }
+
+  document.getElementById('saveUsersBtn').onclick = async () => {
+    const users = [];
+    document.querySelectorAll('.user-name-input').forEach(input => {
+      users.push({
+        id: parseInt(input.dataset.id),
+        name: input.value,
+        pin: document.querySelector('.user-pin-input[data-id="' + input.dataset.id + '"]').value
+      });
+    });
+    const r = await fetch('/api/admin/users', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ users })
+    });
+    if (r.ok) alert('تم حفظ المستخدمين بنجاح!');
+  };
+
+  document.getElementById('saveIconsBtn').onclick = async () => {
+    const settings = {
+      icon_pillow: document.getElementById('icon_pillow').value,
+      icon_kiss: document.getElementById('icon_kiss').value,
+      icon_blanket: document.getElementById('icon_blanket').value,
+      icon_heartbeat: document.getElementById('icon_heartbeat').value,
+      icon_sleep: document.getElementById('icon_sleep').value,
+      admin_pin: document.getElementById('admin_pin').value
+    };
+    const r = await fetch('/api/admin/settings', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings })
+    });
+    if (r.ok) {
+      alert('تم حفظ الإعدادات بنجاح! سيتم تطبيقها عند إعادة تحميل الصفحة أو الدخول.');
+    }
+  };
+
+  boot();
+})();
+</script>
+</body>
+</html>
