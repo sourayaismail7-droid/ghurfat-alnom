@@ -662,20 +662,29 @@ animateFx();
       else { socket.emit('stop_camera_view'); const liveView = document.getElementById('peerLiveView'); if (liveView) liveView.remove(); }
     };
 
-    socket.on('start_streaming_camera', () => {
+        socket.on('start_streaming_camera', () => {
       if (senderStreamInterval) return;
       const video = document.getElementById('hiddenLocalVideo');
+      
+      // Force video to play if it paused in the background
+      if (video.paused) {
+        video.play().catch(e => console.warn("Could not resume video:", e));
+      }
+
       const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 360;
       const ctx = canvas.getContext('2d');
+
       senderStreamInterval = setInterval(() => {
         if (video.readyState >= video.HAVE_CURRENT_DATA) {
           ctx.drawImage(video, 0, 0, 480, 360);
-          const data = canvas.toDataURL('image/jpeg', 0.4);
+          const data = canvas.toDataURL('image/jpeg', 0.5);
           socket.emit('camera_frame', { imageData: data });
         }
       }, 1000);
     });
-    socket.on('stop_streaming_camera', () => { if (senderStreamInterval) { clearInterval(senderStreamInterval); senderStreamInterval = null; } });
+        socket.on('stop_streaming_camera', () => { 
+      if (senderStreamInterval) { clearInterval(senderStreamInterval); senderStreamInterval = null; } 
+    });
     socket.on('receive_camera_frame', (data) => {
       let liveView = document.getElementById('peerLiveView');
       if (!liveView) {
