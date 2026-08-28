@@ -103,9 +103,17 @@ app.get('/api/messages', (req, res) => {
 app.post('/api/messages/:id/view', (req, res) => {
   const userId = tokens[req.cookies.token];
   if (!userId) return res.status(401).json({ error: 'Not logged in' });
+  
   const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(req.params.id);
   if (!msg || msg.image_view_once !== 1) return res.status(404).json({ error: 'Not found' });
+  
   db.prepare('UPDATE messages SET image_viewed = 1 WHERE id = ?').run(req.params.id);
+  
+  // Notify the sender instantly that it was viewed
+  if (userSockets[msg.sender_id]) {
+    userSockets[msg.sender_id].emit('image_viewed', { id: msg.id });
+  }
+  
   res.json({ image_data: msg.image_data });
 });
 
