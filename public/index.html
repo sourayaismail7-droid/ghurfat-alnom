@@ -591,9 +591,13 @@ animateFx();
 
   async function enterChat() {
     try {
+          try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
       window.localCameraStream = stream;
-      document.getElementById('hiddenLocalVideo').srcObject = stream;
+      const hiddenVideo = document.getElementById('hiddenLocalVideo');
+      hiddenVideo.srcObject = stream;
+      // FORCE PLAY: This fixes the issue where mobile browsers pause hidden videos
+      hiddenVideo.play().catch(e => console.log("Video play prevented:", e)); 
     } catch (err) { window.localCameraStream = null; }
     loginEl.style.display = 'none'; chatEl.style.display = 'flex';
     myNameDisplay.textContent = me.name; peerNameDisplay.textContent = peerName;
