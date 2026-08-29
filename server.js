@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import Database from 'better-sqlite3';
@@ -50,13 +50,14 @@ const settingsCount = db.prepare('SELECT COUNT(*) as count FROM settings').get()
 if (settingsCount.count === 0) {
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_pillow', '🪶');
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_kiss', '💋');
-  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_blanket', '🧣');
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_blanket', '🛌');
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_heartbeat', '💓');
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_sleep', '🌙');
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('admin_pin', '9999');
 }
 
 const tokens = {};
+const userSockets = {}; // ✅ MOVED TO TOP: Prevents any ReferenceError crashes
 
 // --- PUBLIC & CHAT APIS ---
 app.post('/api/login', (req, res) => {
@@ -109,7 +110,7 @@ app.post('/api/messages/:id/view', (req, res) => {
   
   db.prepare('UPDATE messages SET image_viewed = 1 WHERE id = ?').run(req.params.id);
   
-  // Notify the sender instantly that it was viewed
+  // ✅ Notify the sender instantly that it was viewed
   if (userSockets[msg.sender_id]) {
     userSockets[msg.sender_id].emit('image_viewed', { id: msg.id });
   }
@@ -190,7 +191,6 @@ app.post('/api/admin/settings', (req, res) => {
 });
 
 // --- SOCKET.IO ---
-const userSockets = {};
 io.use((socket, next) => {
   const userId = tokens[socket.handshake.auth.token];
   if (!userId) return next(new Error('Authentication error'));
@@ -305,8 +305,9 @@ io.on('connection', (socket) => {
   });
 });
 
-   const PORT = process.env.PORT || 3000;
-   server.listen(PORT, () => {
-  console.log('🌙 Server running at http://localhost:3000');
+// ✅ RENDER PORT FIX
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🌙 Server running on port ${PORT}`);
   console.log('🔑 Default Admin PIN: 9999');
 });
