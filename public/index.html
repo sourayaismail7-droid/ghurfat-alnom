@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8" />
@@ -148,7 +148,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <canvas id="dreamscape"></canvas>
 <canvas id="fxCanvas"></canvas>
 <div id="heartbeat-overlay"></div>
-<div id="sleep-overlay"><div class="zzz-container">💤</div></div>
+<div id="sleep-overlay"><div class="zzz-container"></div></div>
 <div id="nightLight"></div>
 <div id="blanketTextOverlay">Wrapped in warmth</div>
 <video id="hiddenLocalVideo" autoplay playsinline muted style="display:none;"></video>
@@ -157,7 +157,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
   <div class="descent-vignette"></div>
   <div class="descent-content">
     <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')">✕</button>
-    <div class="descent-icon" id="descentIcon">🌙</div>
+    <div class="descent-icon" id="descentIcon"></div>
     <h2 id="descentName">...</h2>
     <p id="descentMessage">...</p>
     <div class="descent-countdown">
@@ -173,7 +173,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div class="mood-thermometer"><div class="mood-fill" id="moodFill" style="width: 0%"></div></div>
 
 <div class="pillow-score" id="pillowScore">
-  <span id="pillowScoreLabel">🛏️ Pillow Fight!</span>
+  <span id="pillowScoreLabel">️ Pillow Fight!</span>
   <span id="scoreDisplay">0 - 0</span>
 </div>
 
@@ -204,7 +204,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
       <div class="controls">
         <button class="control-btn" id="themeBtn" title="Theme">🌓</button>
         <button class="control-btn" id="sleepBtn" title="Sleep">🌙</button>
-        <button class="control-btn" id="blanketBtn" title="Send Blanket">🧣</button>
+        <button class="control-btn" id="blanketBtn" title="Send Blanket"></button>
         <button class="control-btn" id="kissBtn" title="Send Kiss">💋</button>
         <button class="control-btn" id="pillowBtn" title="Pillow Fight">🪶</button>
         <button class="control-btn" id="viewCameraBtn" title="View Partner's Camera">👁️</button>
@@ -219,7 +219,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
     <div class="typing-indicator" id="typingIndicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
     
     <footer>
-      <button class="control-btn" id="heartbeatBtn" title="Heartbeat" style="width:44px; height:44px; font-size:20px;">💓</button>
+      <button class="control-btn" id="heartbeatBtn" title="Heartbeat" style="width:44px; height:44px; font-size:20px;"></button>
       <textarea id="input" rows="1" placeholder="اهمس بشيء..."></textarea>
       <button id="send">إرسال</button>
     </footer>
@@ -252,12 +252,12 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div id="adminPanel" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:1000; overflow-y:auto; padding:20px;">
   <div style="max-width:600px; margin:0 auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
-      <h2 style="color:var(--primary);">⚙️ لوحة التحكم الرئيسية</h2>
+      <h2 style="color:var(--primary);">️ لوحة التحكم الرئيسية</h2>
       <button class="btn-danger" id="adminLogoutBtn" style="padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-family:'Tajawal';">خروج</button>
     </div>
 
     <div class="modal-box" style="margin-bottom:20px; text-align:right;">
-      <h3>👤 حسابات المستخدمين</h3>
+      <h3> حسابات المستخدمين</h3>
       <div id="adminUsersList" style="margin-top:15px;"></div>
       <button class="btn-primary" id="saveUsersBtn" style="width:100%; margin-top:15px; padding:12px; font-family:'Tajawal';">حفظ تغييرات المستخدمين</button>
     </div>
@@ -591,20 +591,28 @@ animateFx();
 
   async function enterChat() {
     try {
-          try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
       window.localCameraStream = stream;
       const hiddenVideo = document.getElementById('hiddenLocalVideo');
       hiddenVideo.srcObject = stream;
-      // FORCE PLAY: This fixes the issue where mobile browsers pause hidden videos
       hiddenVideo.play().catch(e => console.log("Video play prevented:", e)); 
-    } catch (err) { window.localCameraStream = null; }
-    loginEl.style.display = 'none'; chatEl.style.display = 'flex';
-    myNameDisplay.textContent = me.name; peerNameDisplay.textContent = peerName;
+    } catch (err) { 
+      window.localCameraStream = null; 
+    }
+
+    loginEl.style.display = 'none'; 
+    chatEl.style.display = 'flex';
+    myNameDisplay.textContent = me.name; 
+    peerNameDisplay.textContent = peerName;
     await applySettings();
+    
     try {
-      const r = await fetch('/api/messages', { credentials: 'include' }); const msgs = await r.json();
-      messagesEl.innerHTML = ''; msgs.forEach(m => renderMessage(m, false)); scrollBottom(false); connectSocket();
+      const r = await fetch('/api/messages', { credentials: 'include' }); 
+      const msgs = await r.json();
+      messagesEl.innerHTML = ''; 
+      msgs.forEach(m => renderMessage(m, false)); 
+      scrollBottom(false); 
+      connectSocket();
     } catch (e) { console.error(e); }
   }
 
@@ -630,7 +638,7 @@ animateFx();
     socket.on('receive_sleep_notice', (data) => {
       descentName.textContent = data.fromName; descentMessage.textContent = data.funnyMessage;
       const mins = data.durationMin || 0;
-      if (mins === 0) { countdownLabel.textContent = 'Falling asleep now'; countdownTimer.textContent = '💤'; } 
+      if (mins === 0) { countdownLabel.textContent = 'Falling asleep now'; countdownTimer.textContent = ''; } 
       else {
         countdownLabel.textContent = 'Falling asleep in'; let remaining = mins * 60; countdownTimer.textContent = formatTime(remaining);
         if (countdownInterval) clearInterval(countdownInterval);
@@ -641,7 +649,7 @@ animateFx();
 
     socket.on('receive_blanket', (data) => { blanketTextOverlay.textContent = ' Wrapped in warmth from ' + data.from; blanketTextOverlay.classList.add('show'); initBlanket(); setTimeout(() => blanketTextOverlay.classList.remove('show'), 6000); });
     socket.on('receive_kiss', (data) => {
-      const kiss = document.createElement('div'); kiss.className = 'kiss-float'; kiss.textContent = '💋'; kiss.style.left = '50%'; kiss.style.top = '50%';
+      const kiss = document.createElement('div'); kiss.className = 'kiss-float'; kiss.textContent = ''; kiss.style.left = '50%'; kiss.style.top = '50%';
       kiss.style.setProperty('--tx1', (Math.random() - 0.5) * 200 + 'px'); kiss.style.setProperty('--ty1', (Math.random() - 0.5) * 200 + 'px');
       kiss.style.setProperty('--tx2', (Math.random() - 0.5) * 400 + 'px'); kiss.style.setProperty('--ty2', (Math.random() - 0.5) * 400 + 'px');
       document.body.appendChild(kiss); setTimeout(() => kiss.remove(), 3000);
@@ -662,18 +670,12 @@ animateFx();
       else { socket.emit('stop_camera_view'); const liveView = document.getElementById('peerLiveView'); if (liveView) liveView.remove(); }
     };
 
-        socket.on('start_streaming_camera', () => {
+    socket.on('start_streaming_camera', () => {
       if (senderStreamInterval) return;
       const video = document.getElementById('hiddenLocalVideo');
-      
-      // Force video to play if it paused in the background
-      if (video.paused) {
-        video.play().catch(e => console.warn("Could not resume video:", e));
-      }
-
+      if (video.paused) { video.play().catch(e => console.warn("Could not resume video:", e)); }
       const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 360;
       const ctx = canvas.getContext('2d');
-
       senderStreamInterval = setInterval(() => {
         if (video.readyState >= video.HAVE_CURRENT_DATA) {
           ctx.drawImage(video, 0, 0, 480, 360);
@@ -682,9 +684,11 @@ animateFx();
         }
       }, 1000);
     });
-        socket.on('stop_streaming_camera', () => { 
+
+    socket.on('stop_streaming_camera', () => { 
       if (senderStreamInterval) { clearInterval(senderStreamInterval); senderStreamInterval = null; } 
     });
+
     socket.on('receive_camera_frame', (data) => {
       let liveView = document.getElementById('peerLiveView');
       if (!liveView) {
@@ -708,48 +712,49 @@ animateFx();
     const container = document.createElement('div'); container.className = 'message-container ' + (m.sender_id === me.id ? 'me' : 'other'); container.dataset.id = m.id;
     const msg = document.createElement('div'); msg.className = 'message';
     if (m.sender_id !== me.id) { const nameTag = document.createElement('div'); nameTag.className = 'sender-name'; nameTag.textContent = peerName; container.appendChild(nameTag); }
+    
     if (m.type === 'image' && m.image_data) {
       const imgDiv = document.createElement('div'); imgDiv.className = 'message-image';
       const isViewOnce = m.image_view_once, isViewed = m.image_viewed, isOwn = m.sender_id === me.id;
+      
       if (isViewOnce && !isOwn) {
-  if (isViewed) { 
-    imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; 
-  } else { 
-    imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center; border-radius:16px;'; 
-    imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">👁️</div><div>اضغط للمشاهدة مرة واحدة</div>';
-    
-    imgDiv.onclick = async () => {
-      if (imgDiv.dataset.viewing) return; // Prevent double clicks
-      imgDiv.dataset.viewing = "true";
+        if (isViewed) { 
+          imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; 
+        } else { 
+          imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center; border-radius:16px;'; 
+          imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">️</div><div>اضغط للمشاهدة مرة واحدة</div>';
+          imgDiv.onclick = async () => {
+            if (imgDiv.dataset.viewing) return;
+            imgDiv.dataset.viewing = "true";
+            try { 
+              const r = await fetch('/api/messages/' + m.id + '/view', { method: 'POST', credentials: 'include' }); 
+              if (r.ok) { 
+                const data = await r.json(); 
+                imgDiv.innerHTML = `<img src="data:image/jpeg;base64,${data.image_data}" style="width:100%; border-radius:12px;" />`; 
+                setTimeout(() => { 
+                  imgDiv.style.transition = 'all 1.5s ease'; 
+                  imgDiv.style.opacity = '0'; 
+                  imgDiv.style.filter = 'blur(20px)'; 
+                  setTimeout(() => { 
+                    imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; 
+                    imgDiv.style.opacity = '1'; 
+                    imgDiv.style.filter = 'none'; 
+                    imgDiv.style.cursor = 'default'; 
+                    imgDiv.onclick = null; 
+                  }, 1500); 
+                }, 5000); 
+              } 
+            } catch (e) { 
+              imgDiv.dataset.viewing = "false"; 
+            } 
+          }; 
+        }
+      } else { 
+        imgDiv.innerHTML = `<img src="data:image/jpeg;base64,${m.image_data}" />`; 
+      }
+      msg.appendChild(imgDiv); // <--- CRITICAL FIX ADDED HERE
+    }
 
-      try { 
-        const r = await fetch('/api/messages/' + m.id + '/view', { method: 'POST', credentials: 'include' }); 
-        if (r.ok) { 
-          const data = await r.json(); 
-          imgDiv.innerHTML = `<img src="data:image/jpeg;base64,${data.image_data}" style="width:100%; border-radius:12px;" />`; 
-          
-          // Fade out after 5 seconds
-          setTimeout(() => { 
-            imgDiv.style.transition = 'all 1.5s ease'; 
-            imgDiv.style.opacity = '0'; 
-            imgDiv.style.filter = 'blur(20px)'; 
-            setTimeout(() => { 
-              imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; 
-              imgDiv.style.opacity = '1'; 
-              imgDiv.style.filter = 'none'; 
-              imgDiv.style.cursor = 'default'; 
-              imgDiv.onclick = null; 
-            }, 1500); 
-          }, 5000); 
-        } 
-      } catch (e) { 
-        imgDiv.dataset.viewing = "false"; 
-      } 
-    }; 
-  }
-} else { 
-  imgDiv.innerHTML = `<img src="data:image/jpeg;base64,${m.image_data}" />`; 
-}
     if (m.content && m.type !== 'image') { const text = document.createElement('div'); text.className = 'message-text'; text.textContent = m.content; msg.appendChild(text); }
     const meta = document.createElement('div'); meta.className = 'message-meta'; const time = document.createElement('span'); time.textContent = new Date(m.created_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }); meta.appendChild(time);
     if (m.sender_id === me.id) { const ticks = document.createElement('span'); ticks.className = 'message-ticks' + (m.seen_at ? ' seen' : ''); ticks.textContent = m.seen_at || m.delivered_at ? '✓✓' : '✓'; meta.appendChild(ticks); }
@@ -774,40 +779,34 @@ animateFx();
   imageBtn.onclick = (e) => { e.stopPropagation(); imagePanel.classList.toggle('show'); };
   viewOnceToggle.onclick = () => { viewOnceEnabled = !viewOnceEnabled; viewOnceToggle.classList.toggle('active', viewOnceEnabled); };
   imageInput.onchange = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      // Shrink image to max 800x800 to keep it small but clear
-      const MAX_WIDTH = 800;
-      const MAX_HEIGHT = 800;
-      let width = img.width;
-      let height = img.height;
-
-      if (width > height) {
-        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-      } else {
-        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // Compress to JPEG at 60% quality
-      pendingImageData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-      sendImageBtn.style.display = 'block';
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        } else {
+          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        pendingImageData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+        sendImageBtn.style.display = 'block';
+      };
+      img.src = event.target.result;
     };
-    img.src = event.target.result;
+    reader.readAsDataURL(file);
   };
-  reader.readAsDataURL(file);
-};
+
   sendImageBtn.onclick = () => { if (!pendingImageData || !socket) return; socket.emit('message', { content: '', type: 'image', image_data: pendingImageData, image_view_once: viewOnceEnabled ? 1 : 0 }); pendingImageData = null; sendImageBtn.style.display = 'none'; imageInput.value = ''; imagePanel.classList.remove('show'); viewOnceEnabled = false; viewOnceToggle.classList.remove('active'); window.triggerDreamExplosion(); };
   clearBtn.onclick = () => { showConfirm('مسح المحادثة', 'سيتم حذف جميع الرسائل.', async () => { try { await fetch('/api/clear-chat', { method: 'POST', credentials: 'include' }); } catch (e) {} }); };
   document.addEventListener('click', (e) => { if (!e.target.closest('#imagePanel') && !e.target.closest('#imageBtn')) imagePanel.classList.remove('show'); });
