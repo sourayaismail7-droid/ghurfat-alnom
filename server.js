@@ -34,7 +34,6 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
 
-// Initialize Users
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 if (userCount.count === 0) {
   db.prepare('INSERT INTO users (id, name, pin) VALUES (?, ?, ?)').run(1, 'أنت', '1234');
@@ -45,7 +44,6 @@ if (userCount.count === 0) {
   db.prepare('INSERT INTO mood (user_id, temperature) VALUES (?, ?)').run(2, 50);
 }
 
-// Initialize Settings
 const settingsCount = db.prepare('SELECT COUNT(*) as count FROM settings').get();
 if (settingsCount.count === 0) {
   db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('icon_pillow', '🪶');
@@ -57,9 +55,8 @@ if (settingsCount.count === 0) {
 }
 
 const tokens = {};
-const userSockets = {}; // ✅ MOVED TO TOP: Prevents any ReferenceError crashes
+const userSockets = {};
 
-// --- PUBLIC & CHAT APIS ---
 app.post('/api/login', (req, res) => {
   try {
     const { pin } = req.body;
@@ -104,17 +101,10 @@ app.get('/api/messages', (req, res) => {
 app.post('/api/messages/:id/view', (req, res) => {
   const userId = tokens[req.cookies.token];
   if (!userId) return res.status(401).json({ error: 'Not logged in' });
-  
   const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(req.params.id);
   if (!msg || msg.image_view_once !== 1) return res.status(404).json({ error: 'Not found' });
-  
   db.prepare('UPDATE messages SET image_viewed = 1 WHERE id = ?').run(req.params.id);
-  
-  // ✅ Notify the sender instantly that it was viewed
-  if (userSockets[msg.sender_id]) {
-    userSockets[msg.sender_id].emit('image_viewed', { id: msg.id });
-  }
-  
+  if (userSockets[msg.sender_id]) userSockets[msg.sender_id].emit('image_viewed', { id: msg.id });
   res.json({ image_data: msg.image_data });
 });
 
@@ -142,7 +132,6 @@ app.get('/api/public-settings', (req, res) => {
   res.json(settings);
 });
 
-// --- ADMIN APIS ---
 app.post('/api/admin/login', (req, res) => {
   const { pin } = req.body;
   const adminPin = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_pin')?.value || '9999';
@@ -184,13 +173,10 @@ app.post('/api/admin/settings', (req, res) => {
   if (tokens[req.cookies.admin_token] !== 'admin') return res.status(401).json({ error: 'Unauthorized' });
   const { settings } = req.body;
   const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
-  for (const [key, value] of Object.entries(settings)) {
-    stmt.run(key, value);
-  }
+  for (const [key, value] of Object.entries(settings)) stmt.run(key, value);
   res.json({ success: true });
 });
 
-// --- SOCKET.IO ---
 io.use((socket, next) => {
   const userId = tokens[socket.handshake.auth.token];
   if (!userId) return next(new Error('Authentication error'));
@@ -288,9 +274,14 @@ io.on('connection', (socket) => {
   socket.on('send_heartbeat', () => { if (userSockets[peerId]) userSockets[peerId].emit('receive_heartbeat', { from: userId }); });
   socket.on('shake_nudge', () => { if (userSockets[peerId]) userSockets[peerId].emit('receive_nudge', { from: userId }); });
   socket.on('starlight_wish', () => { if (userSockets[peerId]) userSockets[peerId].emit('receive_wish', { from: userId }); });
+  socket.on('mood_update', (data) => {
+    db.prepare('INSERT OR REPLACE INTO mood (user_id, temperature) VALUES (?, ?)').run(userId, data.temperature);
+    if (userSockets[peerId]) userSockets[peerId].emit('mood_update', { temperature: data.temperature });
+  });
   
   socket.on('request_camera_view', () => { if (userSockets[peerId]) userSockets[peerId].emit('start_streaming_camera'); });
   socket.on('stop_camera_view', () => { if (userSockets[peerId]) userSockets[peerId].emit('stop_streaming_camera'); });
+  socket.on('flip_partner_camera', () => { if (userSockets[peerId]) userSockets[peerId].emit('flip_my_camera'); });
   socket.on('camera_frame', (data) => { if (userSockets[peerId]) userSockets[peerId].emit('receive_camera_frame', { imageData: data.imageData }); });
   
   socket.on('wake_up', () => {
@@ -305,7 +296,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ RENDER PORT FIX
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🌙 Server running on port ${PORT}`);
