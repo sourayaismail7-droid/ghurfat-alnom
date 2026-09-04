@@ -148,7 +148,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <canvas id="dreamscape"></canvas>
 <canvas id="fxCanvas"></canvas>
 <div id="heartbeat-overlay"></div>
-<div id="sleep-overlay"><div class="zzz-container"></div></div>
+<div id="sleep-overlay"><div class="zzz-container">💤</div></div>
 <div id="nightLight"></div>
 <div id="blanketTextOverlay">Wrapped in warmth</div>
 <video id="hiddenLocalVideo" autoplay playsinline muted style="display:none;"></video>
@@ -157,7 +157,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
   <div class="descent-vignette"></div>
   <div class="descent-content">
     <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')">✕</button>
-    <div class="descent-icon" id="descentIcon"></div>
+    <div class="descent-icon" id="descentIcon">🌙</div>
     <h2 id="descentName">...</h2>
     <p id="descentMessage">...</p>
     <div class="descent-countdown">
@@ -173,7 +173,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div class="mood-thermometer"><div class="mood-fill" id="moodFill" style="width: 0%"></div></div>
 
 <div class="pillow-score" id="pillowScore">
-  <span id="pillowScoreLabel">️ Pillow Fight!</span>
+  <span id="pillowScoreLabel">🛏️ Pillow Fight!</span>
   <span id="scoreDisplay">0 - 0</span>
 </div>
 
@@ -204,10 +204,11 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
       <div class="controls">
         <button class="control-btn" id="themeBtn" title="Theme">🌓</button>
         <button class="control-btn" id="sleepBtn" title="Sleep">🌙</button>
-        <button class="control-btn" id="blanketBtn" title="Send Blanket"></button>
+        <button class="control-btn" id="blanketBtn" title="Send Blanket">🛌</button>
         <button class="control-btn" id="kissBtn" title="Send Kiss">💋</button>
         <button class="control-btn" id="pillowBtn" title="Pillow Fight">🪶</button>
-        <button class="control-btn" id="viewCameraBtn" title="View Partner's Camera">👁️</button>
+        <button class="control-btn" id="flipPartnerCameraBtn" title="تبديل كاميرا الشريك">🔄</button>
+        <button class="control-btn" id="viewCameraBtn" title="عرض كاميرا الشريك">👁️</button>
         <button class="control-btn" id="imageBtn" title="Image">🖼️</button>
         <button class="control-btn" id="clearBtn" title="Clear">🗑️</button>
         <button class="control-btn logout-btn" id="logoutBtn" title="Logout">🚪 خروج</button>
@@ -219,9 +220,10 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
     <div class="typing-indicator" id="typingIndicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
     
     <footer>
-      <button class="control-btn" id="heartbeatBtn" title="Heartbeat" style="width:44px; height:44px; font-size:20px;"></button>
-      <textarea id="input" rows="1" placeholder="اهمس بشيء..."></textarea>
+      <button class="control-btn" id="heartbeatBtn" title="Heartbeat" style="width:44px; height:44px; font-size:20px;">💓</button>
+      <textarea id="input" rows="1" placeholder="اهمس بشيء..." dir="auto"></textarea>
       <button id="send">إرسال</button>
+      <input type="range" id="moodSlider" min="0" max="100" value="50" title="تغيير المزاج" style="width: 60px; accent-color: var(--primary); cursor: pointer;" />
     </footer>
 
     <div class="image-panel" id="imagePanel">
@@ -252,16 +254,14 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div id="adminPanel" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:1000; overflow-y:auto; padding:20px;">
   <div style="max-width:600px; margin:0 auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
-      <h2 style="color:var(--primary);">️ لوحة التحكم الرئيسية</h2>
+      <h2 style="color:var(--primary);">⚙️ لوحة التحكم الرئيسية</h2>
       <button class="btn-danger" id="adminLogoutBtn" style="padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-family:'Tajawal';">خروج</button>
     </div>
-
     <div class="modal-box" style="margin-bottom:20px; text-align:right;">
-      <h3> حسابات المستخدمين</h3>
+      <h3>👤 حسابات المستخدمين</h3>
       <div id="adminUsersList" style="margin-top:15px;"></div>
       <button class="btn-primary" id="saveUsersBtn" style="width:100%; margin-top:15px; padding:12px; font-family:'Tajawal';">حفظ تغييرات المستخدمين</button>
     </div>
-
     <div class="modal-box" style="margin-bottom:20px; text-align:right;">
       <h3>🎨 أيقونات التطبيق</h3>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:15px;">
@@ -317,6 +317,20 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 </div>
 
 <script>
+const urlParams = new URLSearchParams(window.location.search);
+const isViewerMode = urlParams.get('mode') === 'viewer';
+
+if (isViewerMode) {
+  document.getElementById('ui-layer').style.display = 'none';
+  document.getElementById('dreamscape').style.display = 'none';
+  const viewerDiv = document.createElement('div');
+  viewerDiv.id = 'viewer-layer';
+  viewerDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:10000;display:flex;align-items:center;justify-content:center;';
+  viewerDiv.innerHTML = '<img id="viewerImg" style="max-width:100%;max-height:100%;object-fit:contain;" /><button id="closeViewer" style="position:absolute;top:15px;right:15px;background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10001;">✕</button>';
+  document.body.appendChild(viewerDiv);
+  document.getElementById('closeViewer').onclick = () => window.close();
+}
+
 const canvas = document.getElementById('dreamscape');
 const ctx = canvas.getContext('2d');
 let width, height, particles = [], mouse = { x: -1000, y: -1000 };
@@ -517,11 +531,13 @@ animateFx();
   const pillowScoreEl = document.getElementById('pillowScore'), scoreDisplay = document.getElementById('scoreDisplay');
   const moodFill = document.getElementById('moodFill'), moodPercent = document.getElementById('moodPercent');
   const nightLight = document.getElementById('nightLight'), viewCameraBtn = document.getElementById('viewCameraBtn');
+  const flipPartnerCameraBtn = document.getElementById('flipPartnerCameraBtn');
 
   let me = null, socket = null, peerId = null, peerName = 'Partner', typingTimer = null, typingState = false;
   let viewOnceEnabled = false, pendingImageData = null, confirmCallback = null;
   let selectedSleepMin = 0, selectedSleepText = 'immediately', sleepNoticeCount = 0, pillowFightActive = false;
   let countdownInterval = null, senderStreamInterval = null, isViewingCamera = false;
+  let currentFacingMode = 'user';
 
   const sleepMessages = [
     "The world is getting quiet. I'm closing my eyes to find you in my dreams.",
@@ -548,11 +564,14 @@ animateFx();
     try {
       const r = await fetch('/api/public-settings');
       const s = await r.json();
-      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow;
-      if(s.icon_kiss) document.getElementById('kissBtn').textContent = s.icon_kiss;
-      if(s.icon_blanket) document.getElementById('blanketBtn').textContent = s.icon_blanket;
-      if(s.icon_heartbeat) document.getElementById('heartbeatBtn').textContent = s.icon_heartbeat;
-      if(s.icon_sleep) { document.getElementById('sleepBtn').textContent = s.icon_sleep; document.getElementById('descentIcon').textContent = s.icon_sleep; }
+      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow || '🪶';
+      if(s.icon_kiss) document.getElementById('kissBtn').textContent = s.icon_kiss || '💋';
+      if(s.icon_blanket) document.getElementById('blanketBtn').textContent = s.icon_blanket || '🛌';
+      if(s.icon_heartbeat) document.getElementById('heartbeatBtn').textContent = s.icon_heartbeat || '💓';
+      if(s.icon_sleep) { 
+        document.getElementById('sleepBtn').textContent = s.icon_sleep || '🌙'; 
+        document.getElementById('descentIcon').textContent = s.icon_sleep || '🌙'; 
+      }
     } catch(e) {}
   }
 
@@ -565,7 +584,6 @@ animateFx();
 
   loginForm.onsubmit = async function(e) {
     e.preventDefault();
-    console.log("Login attempted");
     const pin = document.getElementById('pin').value.trim();
     loginErr.textContent = 'جاري التحقق...';
     try {
@@ -591,7 +609,7 @@ animateFx();
 
   async function enterChat() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } });
       window.localCameraStream = stream;
       const hiddenVideo = document.getElementById('hiddenLocalVideo');
       hiddenVideo.srcObject = stream;
@@ -600,20 +618,24 @@ animateFx();
       window.localCameraStream = null; 
     }
 
-    loginEl.style.display = 'none'; 
-    chatEl.style.display = 'flex';
-    myNameDisplay.textContent = me.name; 
-    peerNameDisplay.textContent = peerName;
-    await applySettings();
-    
-    try {
-      const r = await fetch('/api/messages', { credentials: 'include' }); 
-      const msgs = await r.json();
-      messagesEl.innerHTML = ''; 
-      msgs.forEach(m => renderMessage(m, false)); 
-      scrollBottom(false); 
+    if (!isViewerMode) {
+      loginEl.style.display = 'none'; 
+      chatEl.style.display = 'flex';
+      myNameDisplay.textContent = me.name; 
+      peerNameDisplay.textContent = peerName;
+      await applySettings();
+      
+      try {
+        const r = await fetch('/api/messages', { credentials: 'include' }); 
+        const msgs = await r.json();
+        messagesEl.innerHTML = ''; 
+        msgs.forEach(m => renderMessage(m, false)); 
+        scrollBottom(false); 
+        connectSocket();
+      } catch (e) { console.error(e); }
+    } else {
       connectSocket();
-    } catch (e) { console.error(e); }
+    }
   }
 
   function connectSocket() {
@@ -622,7 +644,11 @@ animateFx();
     
     socket.on('init_states', (data) => {
       if (data.dreamCatcher && data.dreamCatcher.length > 0) { dreamCatcherOrb.classList.add('show'); dreamCount.textContent = data.dreamCatcher.length; }
-      if (data.moodTemperature) updateMood(data.moodTemperature);
+      if (data.moodTemperature) {
+        updateMood(data.moodTemperature);
+        const moodSlider = document.getElementById('moodSlider');
+        if (moodSlider) moodSlider.value = data.moodTemperature;
+      }
       if (data.pillowFightScore) updatePillowScore(data.pillowFightScore);
     });
     socket.on('presence', function(data) { if (data.userId === peerId) { statusDot.classList.toggle('online', data.online); statusText.textContent = data.online ? 'متصل' : 'غير متصل'; } });
@@ -638,7 +664,7 @@ animateFx();
     socket.on('receive_sleep_notice', (data) => {
       descentName.textContent = data.fromName; descentMessage.textContent = data.funnyMessage;
       const mins = data.durationMin || 0;
-      if (mins === 0) { countdownLabel.textContent = 'Falling asleep now'; countdownTimer.textContent = ''; } 
+      if (mins === 0) { countdownLabel.textContent = 'Falling asleep now'; countdownTimer.textContent = '💤'; } 
       else {
         countdownLabel.textContent = 'Falling asleep in'; let remaining = mins * 60; countdownTimer.textContent = formatTime(remaining);
         if (countdownInterval) clearInterval(countdownInterval);
@@ -649,10 +675,17 @@ animateFx();
 
     socket.on('receive_blanket', (data) => { blanketTextOverlay.textContent = ' Wrapped in warmth from ' + data.from; blanketTextOverlay.classList.add('show'); initBlanket(); setTimeout(() => blanketTextOverlay.classList.remove('show'), 6000); });
     socket.on('receive_kiss', (data) => {
-      const kiss = document.createElement('div'); kiss.className = 'kiss-float'; kiss.textContent = ''; kiss.style.left = '50%'; kiss.style.top = '50%';
-      kiss.style.setProperty('--tx1', (Math.random() - 0.5) * 200 + 'px'); kiss.style.setProperty('--ty1', (Math.random() - 0.5) * 200 + 'px');
-      kiss.style.setProperty('--tx2', (Math.random() - 0.5) * 400 + 'px'); kiss.style.setProperty('--ty2', (Math.random() - 0.5) * 400 + 'px');
-      document.body.appendChild(kiss); setTimeout(() => kiss.remove(), 3000);
+      const kiss = document.createElement('div'); 
+      kiss.className = 'kiss-float'; 
+      kiss.textContent = '💋'; 
+      kiss.style.left = '50%'; 
+      kiss.style.top = '50%';
+      kiss.style.setProperty('--tx1', (Math.random() - 0.5) * 200 + 'px'); 
+      kiss.style.setProperty('--ty1', (Math.random() - 0.5) * 200 + 'px');
+      kiss.style.setProperty('--tx2', (Math.random() - 0.5) * 400 + 'px'); 
+      kiss.style.setProperty('--ty2', (Math.random() - 0.5) * 400 + 'px');
+      document.body.appendChild(kiss); 
+      setTimeout(() => kiss.remove(), 3000);
     });
     socket.on('pillow_fight_hit', (data) => { document.body.classList.add('screen-shake'); setTimeout(() => document.body.classList.remove('screen-shake'), 500); pillows.push(new Pillow()); updatePillowScore(data.score); pillowScoreEl.classList.add('show'); setTimeout(() => pillowScoreEl.classList.remove('show'), 3000); });
     socket.on('mood_update', (data) => updateMood(data.temperature));
@@ -663,11 +696,40 @@ animateFx();
     socket.on('dreams_released', (data) => { wakeText.textContent = 'You woke up. You have ' + data.count + ' messages in the dream catcher.'; wakeModal.classList.add('show'); });
     socket.on('receive_heartbeat', (data) => { if (data.from === peerId) { document.body.style.boxShadow = 'inset 0 0 200px rgba(244, 114, 182, 0.6)'; setTimeout(() => document.body.style.boxShadow = 'none', 1500); } });
 
+    socket.on('flip_my_camera', async () => {
+      try {
+        if (window.localCameraStream) {
+          window.localCameraStream.getTracks().forEach(track => track.stop());
+        }
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+        const newStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } 
+        });
+        window.localCameraStream = newStream;
+        const hiddenVideo = document.getElementById('hiddenLocalVideo');
+        hiddenVideo.srcObject = newStream;
+        hiddenVideo.play().catch(e => console.warn("Video play prevented:", e));
+      } catch (err) {
+        console.error("Failed to flip camera:", err);
+      }
+    });
+
     viewCameraBtn.onclick = () => {
       isViewingCamera = !isViewingCamera;
       viewCameraBtn.classList.toggle('active', isViewingCamera);
-      if (isViewingCamera) { socket.emit('request_camera_view'); } 
-      else { socket.emit('stop_camera_view'); const liveView = document.getElementById('peerLiveView'); if (liveView) liveView.remove(); }
+      if (isViewingCamera) { 
+        socket.emit('request_camera_view'); 
+        window.cameraViewerWindow = window.open(window.location.origin + '/?mode=viewer', 'CameraViewer', 'width=400,height=600,resizable=yes,scrollbars=no');
+      } else { 
+        socket.emit('stop_camera_view'); 
+        if (window.cameraViewerWindow && !window.cameraViewerWindow.closed) {
+          window.cameraViewerWindow.close();
+        }
+      }
+    };
+
+    flipPartnerCameraBtn.onclick = () => {
+      socket.emit('flip_partner_camera');
     };
 
     socket.on('start_streaming_camera', () => {
@@ -690,17 +752,22 @@ animateFx();
     });
 
     socket.on('receive_camera_frame', (data) => {
-      let liveView = document.getElementById('peerLiveView');
-      if (!liveView) {
-        liveView = document.createElement('div'); liveView.id = 'peerLiveView';
-        liveView.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: 80vh; max-width: 800px; max-height: 600px; background: #000; border: 3px solid rgba(192, 132, 252, 0.6); border-radius: 20px; overflow: hidden; z-index: 9995; box-shadow: 0 20px 60px rgba(0,0,0,0.8); animation: fade-in 0.5s ease;';
-        const img = document.createElement('img'); img.id = 'peerLiveImg'; img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;'; liveView.appendChild(img);
-        const closeBtn = document.createElement('button'); closeBtn.textContent = '✕';
-        closeBtn.style.cssText = 'position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.5);';
-        closeBtn.onclick = () => { viewCameraBtn.classList.remove('active'); isViewingCamera = false; socket.emit('stop_camera_view'); liveView.remove(); };
-        liveView.appendChild(closeBtn); document.body.appendChild(liveView);
+      if (isViewerMode) {
+        const viewerImg = document.getElementById('viewerImg');
+        if (viewerImg) viewerImg.src = data.imageData;
+      } else {
+        let liveView = document.getElementById('peerLiveView');
+        if (!liveView) {
+          liveView = document.createElement('div'); liveView.id = 'peerLiveView';
+          liveView.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: 80vh; max-width: 800px; max-height: 600px; background: #000; border: 3px solid rgba(192, 132, 252, 0.6); border-radius: 20px; overflow: hidden; z-index: 9995; box-shadow: 0 20px 60px rgba(0,0,0,0.8); animation: fade-in 0.5s ease;';
+          const img = document.createElement('img'); img.id = 'peerLiveImg'; img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;'; liveView.appendChild(img);
+          const closeBtn = document.createElement('button'); closeBtn.textContent = '✕';
+          closeBtn.style.cssText = 'position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.5);';
+          closeBtn.onclick = () => { viewCameraBtn.classList.remove('active'); isViewingCamera = false; socket.emit('stop_camera_view'); liveView.remove(); };
+          liveView.appendChild(closeBtn); document.body.appendChild(liveView);
+        }
+        document.getElementById('peerLiveImg').src = data.imageData;
       }
-      document.getElementById('peerLiveImg').src = data.imageData;
     });
   }
 
@@ -722,7 +789,7 @@ animateFx();
           imgDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-soft);">👁️ شوهدت</div>'; 
         } else { 
           imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center; border-radius:16px;'; 
-          imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">️</div><div>اضغط للمشاهدة مرة واحدة</div>';
+          imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">👁️</div><div>اضغط للمشاهدة مرة واحدة</div>';
           imgDiv.onclick = async () => {
             if (imgDiv.dataset.viewing) return;
             imgDiv.dataset.viewing = "true";
@@ -752,7 +819,7 @@ animateFx();
       } else { 
         imgDiv.innerHTML = `<img src="data:image/jpeg;base64,${m.image_data}" />`; 
       }
-      msg.appendChild(imgDiv); // <--- CRITICAL FIX ADDED HERE
+      msg.appendChild(imgDiv);
     }
 
     if (m.content && m.type !== 'image') { const text = document.createElement('div'); text.className = 'message-text'; text.textContent = m.content; msg.appendChild(text); }
@@ -827,6 +894,14 @@ animateFx();
   pillowBtn.onclick = () => { pillowFightActive = !pillowFightActive; pillowBtn.classList.toggle('active', pillowFightActive); if (socket) socket.emit('pillow_fight_throw'); };
   openDreams.onclick = () => { wakeModal.classList.remove('show'); socket.emit('wake_up'); };
   heartbeatBtn.onclick = () => { if (socket) socket.emit('send_heartbeat'); document.body.style.boxShadow = 'inset 0 0 200px rgba(192, 132, 252, 0.4)'; setTimeout(() => document.body.style.boxShadow = 'none', 1000); };
+  
+  const moodSlider = document.getElementById('moodSlider');
+  moodSlider.addEventListener('input', (e) => {
+    const temp = e.target.value;
+    updateMood(temp);
+    if (socket) socket.emit('mood_update', { temperature: temp });
+  });
+
   messagesEl.addEventListener('scroll', () => { const containers = messagesEl.querySelectorAll('.message-container'); const scrollTop = messagesEl.scrollTop; containers.forEach((c, i) => { if (scrollTop > 200 && i < containers.length - 5) c.classList.add('faded'); else c.classList.remove('faded'); }); });
 
   let pressTimer;
@@ -865,7 +940,6 @@ animateFx();
     if (e.key.toLowerCase() === 'n') { if (socket) socket.emit('shake_nudge'); }
   });
 
-  // --- ADMIN PANEL LOGIC ---
   document.getElementById('adminAccessBtn').onclick = () => {
     document.getElementById('adminLoginModal').classList.add('show');
     document.getElementById('adminPinInput').value = '';
@@ -916,7 +990,7 @@ animateFx();
       });
       document.getElementById('icon_pillow').value = data.settings.icon_pillow || '🪶';
       document.getElementById('icon_kiss').value = data.settings.icon_kiss || '💋';
-      document.getElementById('icon_blanket').value = data.settings.icon_blanket || '🧣';
+      document.getElementById('icon_blanket').value = data.settings.icon_blanket || '🛌';
       document.getElementById('icon_heartbeat').value = data.settings.icon_heartbeat || '💓';
       document.getElementById('icon_sleep').value = data.settings.icon_sleep || '🌙';
       document.getElementById('admin_pin').value = data.settings.admin_pin || '9999';
