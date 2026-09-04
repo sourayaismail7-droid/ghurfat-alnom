@@ -639,8 +639,8 @@ animateFx();
   }
 
   function connectSocket() {
-    const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
-    socket = io({ auth: { token: m ? m[1] : '' }, withCredentials: true });
+    // ✅ SECURE: Rely on HttpOnly cookie via withCredentials, no manual JS cookie reading
+    socket = io({ withCredentials: true });
     
     socket.on('init_states', (data) => {
       if (data.dreamCatcher && data.dreamCatcher.length > 0) { dreamCatcherOrb.classList.add('show'); dreamCount.textContent = data.dreamCatcher.length; }
@@ -981,10 +981,11 @@ animateFx();
       data.users.forEach(u => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; gap:10px; margin-bottom:10px; align-items:center;';
+        // ✅ SECURE: Do not display plaintext PINs, only allow setting new ones
         div.innerHTML = `
           <span style="width:30px; font-weight:bold; color:var(--primary);">#${u.id}</span>
           <input type="text" class="user-name-input" data-id="${u.id}" value="${u.name}" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-family:'Tajawal';" />
-          <input type="text" class="user-pin-input" data-id="${u.id}" value="${u.pin}" style="width:80px; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); text-align:center; font-family:'Tajawal';" />
+          <input type="password" class="user-pin-input" data-id="${u.id}" placeholder="رمز جديد" style="width:100px; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); text-align:center; font-family:'Tajawal';" />
         `;
         usersList.appendChild(div);
       });
