@@ -155,7 +155,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div id="dreamDescentOverlay">
   <div class="descent-vignette"></div>
   <div class="descent-content">
-    <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')"></button>
+    <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')">✕</button>
     <div class="descent-icon" id="descentIcon">🌙</div>
     <h2 id="descentName">...</h2>
     <p id="descentMessage">...</p>
@@ -204,7 +204,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
         <button class="control-btn" id="themeBtn" title="Theme">🌓</button>
         <button class="control-btn" id="sleepBtn" title="Sleep">🌙</button>
         <button class="control-btn" id="blanketBtn" title="Send Blanket">🛌</button>
-        <button class="control-btn" id="kissBtn" title="Send Kiss"></button>
+        <button class="control-btn" id="kissBtn" title="Send Kiss">💋</button>
         <button class="control-btn" id="pillowBtn" title="Pillow Fight">🪶</button>
         <button class="control-btn" id="flipPartnerCameraBtn" title="تبديل كاميرا الشريك">🔄</button>
         <button class="control-btn" id="viewCameraBtn" title="عرض كاميرا الشريك">👁️</button>
@@ -296,7 +296,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 
 <div class="modal-overlay" id="wakeModal">
   <div class="modal-box">
-    <h3>️ صباح الخير</h3>
+    <h3>☀️ صباح الخير</h3>
     <p id="wakeText">لقد استيقظت.</p>
     <div class="modal-btns">
       <button class="btn-primary" id="openDreams">فتح الأحلام</button>
@@ -539,10 +539,11 @@ animateFx();
   let viewOnceEnabled = false, pendingImageData = null, confirmCallback = null;
   let selectedSleepMin = 0, selectedSleepText = 'immediately', sleepNoticeCount = 0, pillowFightActive = false;
   let countdownInterval = null, isViewingCamera = false;
-  let currentFacingMode = 'user';
+  let currentFacingMode = 'user'; // ✅ Default to selfie camera
   
   let peerConnection = null;
   let localStream = null;
+  let cameraInitialized = false;
 
   const sleepMessages = [
     "The world is getting quiet. I'm closing my eyes to find you in my dreams.",
@@ -569,7 +570,7 @@ animateFx();
     try {
       const r = await fetch('/api/public-settings');
       const s = await r.json();
-      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow || '';
+      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow || '🪶';
       if(s.icon_kiss) document.getElementById('kissBtn').textContent = s.icon_kiss || '💋';
       if(s.icon_blanket) document.getElementById('blanketBtn').textContent = s.icon_blanket || '🛌';
       if(s.icon_heartbeat) document.getElementById('heartbeatBtn').textContent = s.icon_heartbeat || '💓';
@@ -619,6 +620,23 @@ animateFx();
       myNameDisplay.textContent = me.name; 
       peerNameDisplay.textContent = peerName;
       await applySettings();
+      
+      // ✅ CRITICAL FIX: Initialize camera on user gesture (login button click)
+      // This ensures browser permission is granted before any socket events
+      if (!cameraInitialized) {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
+            audio: false 
+          });
+          cameraInitialized = true;
+          console.log('✅ Camera initialized successfully');
+        } catch (err) {
+          console.warn('⚠️ Camera permission denied or unavailable:', err);
+          // Don't block the app if camera fails
+        }
+      }
+      
       try {
         const r = await fetch('/api/messages', { credentials: 'include' }); 
         const msgs = await r.json();
@@ -682,24 +700,33 @@ animateFx();
     socket.on('dreams_released', (data) => { wakeText.textContent = 'You woke up. You have ' + data.count + ' messages in the dream catcher.'; wakeModal.classList.add('show'); });
     socket.on('receive_heartbeat', (data) => { if (data.from === peerId) { document.body.style.boxShadow = 'inset 0 0 200px rgba(244, 114, 182, 0.6)'; setTimeout(() => document.body.style.boxShadow = 'none', 1500); } });
 
-    // ✅ CLEAN: Direct browser permission handling
+    // ✅ FIXED: Camera request now uses pre-initialized stream
     socket.on('camera_request', async (data) => {
       if (isViewerMode) return;
-      try {
-        if (!localStream) {
-          // Browser will automatically show the native "Allow Camera?" prompt here
+      
+      if (!localStream || !cameraInitialized) {
+        console.warn('⚠️ Camera not initialized. Waiting for user to grant permission...');
+        // Try to initialize now (will likely fail on mobile without user gesture)
+        try {
           localStream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
             audio: false 
           });
+          cameraInitialized = true;
+        } catch (err) {
+          console.error('❌ Camera permission denied:', err);
+          return;
         }
-        startWebRTC(data.requesterSocketId);
-      } catch (err) {
-        console.error("Camera permission denied:", err);
       }
+      
+      startWebRTC(data.requesterSocketId);
     });
 
     async function startWebRTC(requesterSocketId) {
+      if (peerConnection) {
+        peerConnection.close();
+      }
+      
       peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
       
@@ -710,14 +737,23 @@ animateFx();
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('camera_offer', { toSocketId: requesterSocketId, sdp: offer });
+      console.log('✅ WebRTC offer sent');
     }
 
     socket.on('camera_offer', async (data) => {
       if (!isViewerMode) return;
+      
+      if (peerConnection) {
+        peerConnection.close();
+      }
+      
       peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       peerConnection.ontrack = (e) => {
         const videoEl = document.getElementById('viewerVideo');
-        if (videoEl) videoEl.srcObject = e.streams[0];
+        if (videoEl) {
+          videoEl.srcObject = e.streams[0];
+          console.log('✅ Remote stream attached to video element');
+        }
       };
       peerConnection.onicecandidate = (e) => {
         if (e.candidate) socket.emit('camera_ice', { toSocketId: data.fromSocketId, candidate: e.candidate });
@@ -726,16 +762,22 @@ animateFx();
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
       socket.emit('camera_answer', { toSocketId: data.fromSocketId, sdp: answer });
+      console.log('✅ WebRTC answer sent');
     });
 
     socket.on('camera_answer', async (data) => {
       if (isViewerMode || !peerConnection) return;
       await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      console.log('✅ WebRTC connection established');
     });
 
     socket.on('camera_ice', async (data) => {
       if (!peerConnection) return;
-      await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+      } catch (err) {
+        console.warn('⚠️ ICE candidate error:', err);
+      }
     });
 
     socket.on('camera_stop', () => {
@@ -743,24 +785,28 @@ animateFx();
         peerConnection.close();
         peerConnection = null;
       }
-      if (localStream && !isViewerMode) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
       if (isViewerMode) {
         const videoEl = document.getElementById('viewerVideo');
         if (videoEl) videoEl.srcObject = null;
       }
+      console.log('✅ Camera stream stopped');
     });
 
+    // ✅ FIXED: Camera flip using replaceTrack (defaults to selfie)
     socket.on('camera_flip_request', async (data) => {
       if (isViewerMode || !localStream) return;
+      
       currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
       const videoTrack = localStream.getVideoTracks()[0];
+      
       if (videoTrack) {
         try {
-          const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+          const newStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
+            audio: false 
+          });
           const newTrack = newStream.getVideoTracks()[0];
+          
           videoTrack.stop();
           localStream.removeTrack(videoTrack);
           localStream.addTrack(newTrack);
@@ -768,9 +814,10 @@ animateFx();
           const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
           if (sender) {
             await sender.replaceTrack(newTrack);
+            console.log(`✅ Camera flipped to ${currentFacingMode === 'user' ? 'selfie' : 'back'}`);
           }
         } catch (err) {
-          console.error("Failed to flip camera:", err);
+          console.error("❌ Failed to flip camera:", err);
         }
       }
     });
@@ -805,7 +852,7 @@ animateFx();
       
       if (isViewOnce && !isOwn && !isViewed && !m.image_data) {
         imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center; border-radius:16px;'; 
-        imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">️</div><div>اضغط للمشاهدة مرة واحدة</div>';
+        imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">👁️</div><div>اضغط للمشاهدة مرة واحدة</div>';
         imgDiv.onclick = async () => {
           if (imgDiv.dataset.viewing) return;
           imgDiv.dataset.viewing = "true";
@@ -846,7 +893,7 @@ animateFx();
     msg.appendChild(reactionsDiv);
     const actions = document.createElement('div'); actions.style.cssText = 'position:absolute; top:-10px; left:0; display:none; gap:4px;';
     if (m.sender_id === me.id && m.type !== 'image') { const editBtn = document.createElement('button'); editBtn.textContent = '✏️'; editBtn.style.cssText = 'background:rgba(0,0,0,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; editBtn.onclick = (e) => { e.stopPropagation(); const newText = prompt('عدل:', m.content); if (newText && newText !== m.content && socket) socket.emit('edit_message', { id: m.id, content: newText }); }; actions.appendChild(editBtn); }
-    if (m.sender_id === me.id) { const delBtn = document.createElement('button'); delBtn.textContent = '️'; delBtn.style.cssText = 'background:rgba(239,68,68,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; delBtn.onclick = (e) => { e.stopPropagation(); showConfirm('حذف', 'حذف هذه الرسالة؟', async () => { try { await fetch('/api/messages/' + m.id, { method: 'DELETE', credentials: 'include' }); } catch (e) {} }); }; actions.appendChild(delBtn); }
+    if (m.sender_id === me.id) { const delBtn = document.createElement('button'); delBtn.textContent = '🗑️'; delBtn.style.cssText = 'background:rgba(239,68,68,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; delBtn.onclick = (e) => { e.stopPropagation(); showConfirm('حذف', 'حذف هذه الرسالة؟', async () => { try { await fetch('/api/messages/' + m.id, { method: 'DELETE', credentials: 'include' }); } catch (e) {} }); }; actions.appendChild(delBtn); }
     msg.appendChild(actions); msg.onmouseenter = () => actions.style.display = 'flex'; msg.onmouseleave = () => actions.style.display = 'none'; msg.ondblclick = (e) => { e.stopPropagation(); if (socket) socket.emit('reaction', { msgId: m.id, emoji: '❤️' }); };
     container.appendChild(msg); messagesEl.appendChild(container); if (scroll) scrollBottom(true);
   }
@@ -974,11 +1021,6 @@ animateFx();
     if (e.key.toLowerCase() === 'n') { if (socket) socket.emit('shake_nudge'); }
   });
 
-  document.getElementById('adminAccessBtn').onclick = () => {
-    document.getElementById('adminLoginModal').classList.add('show');
-    document.getElementById('adminPinInput').value = '';
-    document.getElementById('adminLoginErr').textContent = '';
-  };
   // ✅ FIX: Allow Enter key to submit admin PIN
   document.getElementById('adminPinInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -986,6 +1028,13 @@ animateFx();
       document.getElementById('adminLoginBtn').click();
     }
   });
+
+  document.getElementById('adminAccessBtn').onclick = () => {
+    document.getElementById('adminLoginModal').classList.add('show');
+    document.getElementById('adminPinInput').value = '';
+    document.getElementById('adminLoginErr').textContent = '';
+  };
+
   document.getElementById('adminLoginBtn').onclick = async () => {
     const pin = document.getElementById('adminPinInput').value.trim();
     const errEl = document.getElementById('adminLoginErr');
