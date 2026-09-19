@@ -152,11 +152,10 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div id="nightLight"></div>
 <div id="blanketTextOverlay">Wrapped in warmth</div>
 
-<!-- ✅ FIXED: Added 'muted' to satisfy browser autoplay policies -->
 <div id="dreamDescentOverlay">
   <div class="descent-vignette"></div>
   <div class="descent-content">
-    <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')">✕</button>
+    <button class="descent-close" onclick="document.getElementById('dreamDescentOverlay').classList.remove('show')"></button>
     <div class="descent-icon" id="descentIcon">🌙</div>
     <h2 id="descentName">...</h2>
     <p id="descentMessage">...</p>
@@ -176,9 +175,6 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
   <span id="pillowScoreLabel">🛏️ Pillow Fight!</span>
   <span id="scoreDisplay">0 - 0</span>
 </div>
-
-<!-- ✅ FIXED: Added camera permission button for mobile user-gesture requirement -->
-<button id="allowCameraBtn" style="display:none; position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff; padding:12px 24px; border-radius:24px; border:none; font-family:'Tajawal'; font-weight:600; z-index:9999; box-shadow:0 4px 20px rgba(139,92,246,0.4); cursor:pointer;">📷 السماح بمشاركة الكاميرا</button>
 
 <div id="ui-layer">
   <div id="login">
@@ -208,7 +204,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
         <button class="control-btn" id="themeBtn" title="Theme">🌓</button>
         <button class="control-btn" id="sleepBtn" title="Sleep">🌙</button>
         <button class="control-btn" id="blanketBtn" title="Send Blanket">🛌</button>
-        <button class="control-btn" id="kissBtn" title="Send Kiss">💋</button>
+        <button class="control-btn" id="kissBtn" title="Send Kiss"></button>
         <button class="control-btn" id="pillowBtn" title="Pillow Fight">🪶</button>
         <button class="control-btn" id="flipPartnerCameraBtn" title="تبديل كاميرا الشريك">🔄</button>
         <button class="control-btn" id="viewCameraBtn" title="عرض كاميرا الشريك">👁️</button>
@@ -300,7 +296,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 
 <div class="modal-overlay" id="wakeModal">
   <div class="modal-box">
-    <h3>☀️ صباح الخير</h3>
+    <h3>️ صباح الخير</h3>
     <p id="wakeText">لقد استيقظت.</p>
     <div class="modal-btns">
       <button class="btn-primary" id="openDreams">فتح الأحلام</button>
@@ -329,7 +325,6 @@ if (isViewerMode) {
   const viewerDiv = document.createElement('div');
   viewerDiv.id = 'viewer-layer';
   viewerDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:10000;display:flex;align-items:center;justify-content:center;';
-  // ✅ FIXED: Added 'muted' to allow autoplay
   viewerDiv.innerHTML = '<video id="viewerVideo" autoplay playsinline muted style="max-width:100%;max-height:100%;object-fit:contain;" /><button id="closeViewer" style="position:absolute;top:15px;right:15px;background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10001;">✕</button>';
   document.body.appendChild(viewerDiv);
   document.getElementById('closeViewer').onclick = () => {
@@ -539,7 +534,6 @@ animateFx();
   const moodFill = document.getElementById('moodFill'), moodPercent = document.getElementById('moodPercent');
   const nightLight = document.getElementById('nightLight'), viewCameraBtn = document.getElementById('viewCameraBtn');
   const flipPartnerCameraBtn = document.getElementById('flipPartnerCameraBtn');
-  const allowCameraBtn = document.getElementById('allowCameraBtn');
 
   let me = null, socket = null, peerId = null, peerName = 'Partner', typingTimer = null, typingState = false;
   let viewOnceEnabled = false, pendingImageData = null, confirmCallback = null;
@@ -575,7 +569,7 @@ animateFx();
     try {
       const r = await fetch('/api/public-settings');
       const s = await r.json();
-      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow || '🪶';
+      if(s.icon_pillow) document.getElementById('pillowBtn').textContent = s.icon_pillow || '';
       if(s.icon_kiss) document.getElementById('kissBtn').textContent = s.icon_kiss || '💋';
       if(s.icon_blanket) document.getElementById('blanketBtn').textContent = s.icon_blanket || '🛌';
       if(s.icon_heartbeat) document.getElementById('heartbeatBtn').textContent = s.icon_heartbeat || '💓';
@@ -688,23 +682,20 @@ animateFx();
     socket.on('dreams_released', (data) => { wakeText.textContent = 'You woke up. You have ' + data.count + ' messages in the dream catcher.'; wakeModal.classList.add('show'); });
     socket.on('receive_heartbeat', (data) => { if (data.from === peerId) { document.body.style.boxShadow = 'inset 0 0 200px rgba(244, 114, 182, 0.6)'; setTimeout(() => document.body.style.boxShadow = 'none', 1500); } });
 
-    // ✅ FIXED: WebRTC Camera Handling with User Gesture fallback
+    // ✅ CLEAN: Direct browser permission handling
     socket.on('camera_request', async (data) => {
       if (isViewerMode) return;
-      if (!localStream) {
-        allowCameraBtn.style.display = 'block';
-        allowCameraBtn.onclick = async () => {
-          try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
-            allowCameraBtn.style.display = 'none';
-            startWebRTC(data.requesterSocketId);
-          } catch (err) {
-            console.error("Camera denied:", err);
-            allowCameraBtn.style.display = 'none';
-          }
-        };
-      } else {
+      try {
+        if (!localStream) {
+          // Browser will automatically show the native "Allow Camera?" prompt here
+          localStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
+            audio: false 
+          });
+        }
         startWebRTC(data.requesterSocketId);
+      } catch (err) {
+        console.error("Camera permission denied:", err);
       }
     });
 
@@ -762,7 +753,6 @@ animateFx();
       }
     });
 
-    // ✅ FIXED: Camera Flip using replaceTrack (no deadlock)
     socket.on('camera_flip_request', async (data) => {
       if (isViewerMode || !localStream) return;
       currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
@@ -813,10 +803,9 @@ animateFx();
       const imgDiv = document.createElement('div'); imgDiv.className = 'message-image';
       const isViewOnce = m.image_view_once, isViewed = m.image_viewed, isOwn = m.sender_id === me.id;
       
-      // ✅ FIXED: Safely handle masked image_data for view-once
       if (isViewOnce && !isOwn && !isViewed && !m.image_data) {
         imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center; border-radius:16px;'; 
-        imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">👁️</div><div>اضغط للمشاهدة مرة واحدة</div>';
+        imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">️</div><div>اضغط للمشاهدة مرة واحدة</div>';
         imgDiv.onclick = async () => {
           if (imgDiv.dataset.viewing) return;
           imgDiv.dataset.viewing = "true";
@@ -857,7 +846,7 @@ animateFx();
     msg.appendChild(reactionsDiv);
     const actions = document.createElement('div'); actions.style.cssText = 'position:absolute; top:-10px; left:0; display:none; gap:4px;';
     if (m.sender_id === me.id && m.type !== 'image') { const editBtn = document.createElement('button'); editBtn.textContent = '✏️'; editBtn.style.cssText = 'background:rgba(0,0,0,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; editBtn.onclick = (e) => { e.stopPropagation(); const newText = prompt('عدل:', m.content); if (newText && newText !== m.content && socket) socket.emit('edit_message', { id: m.id, content: newText }); }; actions.appendChild(editBtn); }
-    if (m.sender_id === me.id) { const delBtn = document.createElement('button'); delBtn.textContent = '🗑️'; delBtn.style.cssText = 'background:rgba(239,68,68,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; delBtn.onclick = (e) => { e.stopPropagation(); showConfirm('حذف', 'حذف هذه الرسالة؟', async () => { try { await fetch('/api/messages/' + m.id, { method: 'DELETE', credentials: 'include' }); } catch (e) {} }); }; actions.appendChild(delBtn); }
+    if (m.sender_id === me.id) { const delBtn = document.createElement('button'); delBtn.textContent = '️'; delBtn.style.cssText = 'background:rgba(239,68,68,0.5); border:none; border-radius:6px; padding:4px; cursor:pointer;'; delBtn.onclick = (e) => { e.stopPropagation(); showConfirm('حذف', 'حذف هذه الرسالة؟', async () => { try { await fetch('/api/messages/' + m.id, { method: 'DELETE', credentials: 'include' }); } catch (e) {} }); }; actions.appendChild(delBtn); }
     msg.appendChild(actions); msg.onmouseenter = () => actions.style.display = 'flex'; msg.onmouseleave = () => actions.style.display = 'none'; msg.ondblclick = (e) => { e.stopPropagation(); if (socket) socket.emit('reaction', { msgId: m.id, emoji: '❤️' }); };
     container.appendChild(msg); messagesEl.appendChild(container); if (scroll) scrollBottom(true);
   }
