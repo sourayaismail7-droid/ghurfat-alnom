@@ -979,7 +979,13 @@ animateFx();
     document.getElementById('adminPinInput').value = '';
     document.getElementById('adminLoginErr').textContent = '';
   };
-
+  // ✅ FIX: Allow Enter key to submit admin PIN
+  document.getElementById('adminPinInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('adminLoginBtn').click();
+    }
+  });
   document.getElementById('adminLoginBtn').onclick = async () => {
     const pin = document.getElementById('adminPinInput').value.trim();
     const errEl = document.getElementById('adminLoginErr');
