@@ -199,15 +199,15 @@ app.get('/api/messages', (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Not logged in' });
   const peerId = peerOf(userId);
   
-  // ✅ CRITICAL FIX: Mask image_data for unviewed view-once messages
+  // ✅ FIXED: Only mask image_data if the requester is the receiver AND it's unviewed
   const messages = db.prepare(`
     SELECT id, sender_id, receiver_id, content, type,
-      CASE WHEN type = 'image' AND image_view_once = 1 AND image_viewed = 0 THEN NULL ELSE image_data END AS image_data,
+      CASE WHEN type = 'image' AND image_view_once = 1 AND image_viewed = 0 AND receiver_id = ? THEN NULL ELSE image_data END AS image_data,
       image_view_once, image_viewed, delivered_at, seen_at, reactions, created_at, client_id
     FROM messages
     WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
     ORDER BY id ASC
-  `).all(userId, peerId, peerId, userId);
+  `).all(userId, userId, peerId, peerId, userId);
   res.json(messages);
 });
 
@@ -251,7 +251,7 @@ app.get('/api/public-settings', (req, res) => {
   const rows = db.prepare('SELECT key, value FROM settings').all();
   const settings = {};
   for (const row of rows) settings[row.key] = row.value;
-  delete settings.admin_pin; // ✅ Security: Never expose admin PIN publicly
+  delete settings.admin_pin;
   res.json(settings);
 });
 
