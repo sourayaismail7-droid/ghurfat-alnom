@@ -152,6 +152,7 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
 <div id="nightLight"></div>
 <div id="blanketTextOverlay">Wrapped in warmth</div>
 
+<!-- ✅ FIXED: Added 'muted' to satisfy browser autoplay policies -->
 <div id="dreamDescentOverlay">
   <div class="descent-vignette"></div>
   <div class="descent-content">
@@ -175,6 +176,9 @@ footer { padding: 16px 24px; display: flex; gap: 12px; align-items: flex-end; ba
   <span id="pillowScoreLabel">🛏️ Pillow Fight!</span>
   <span id="scoreDisplay">0 - 0</span>
 </div>
+
+<!-- ✅ FIXED: Added camera permission button for mobile user-gesture requirement -->
+<button id="allowCameraBtn" style="display:none; position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff; padding:12px 24px; border-radius:24px; border:none; font-family:'Tajawal'; font-weight:600; z-index:9999; box-shadow:0 4px 20px rgba(139,92,246,0.4); cursor:pointer;">📷 السماح بمشاركة الكاميرا</button>
 
 <div id="ui-layer">
   <div id="login">
@@ -325,7 +329,8 @@ if (isViewerMode) {
   const viewerDiv = document.createElement('div');
   viewerDiv.id = 'viewer-layer';
   viewerDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:10000;display:flex;align-items:center;justify-content:center;';
-  viewerDiv.innerHTML = '<video id="viewerVideo" autoplay playsinline style="max-width:100%;max-height:100%;object-fit:contain;" /><button id="closeViewer" style="position:absolute;top:15px;right:15px;background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10001;">✕</button>';
+  // ✅ FIXED: Added 'muted' to allow autoplay
+  viewerDiv.innerHTML = '<video id="viewerVideo" autoplay playsinline muted style="max-width:100%;max-height:100%;object-fit:contain;" /><button id="closeViewer" style="position:absolute;top:15px;right:15px;background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10001;">✕</button>';
   document.body.appendChild(viewerDiv);
   document.getElementById('closeViewer').onclick = () => {
     if (window.opener) window.opener.postMessage({ type: 'close_camera' }, '*');
@@ -534,6 +539,7 @@ animateFx();
   const moodFill = document.getElementById('moodFill'), moodPercent = document.getElementById('moodPercent');
   const nightLight = document.getElementById('nightLight'), viewCameraBtn = document.getElementById('viewCameraBtn');
   const flipPartnerCameraBtn = document.getElementById('flipPartnerCameraBtn');
+  const allowCameraBtn = document.getElementById('allowCameraBtn');
 
   let me = null, socket = null, peerId = null, peerName = 'Partner', typingTimer = null, typingState = false;
   let viewOnceEnabled = false, pendingImageData = null, confirmCallback = null;
@@ -541,10 +547,8 @@ animateFx();
   let countdownInterval = null, isViewingCamera = false;
   let currentFacingMode = 'user';
   
-  // ✅ WebRTC Variables
   let peerConnection = null;
   let localStream = null;
-  let remoteVideo = null;
 
   const sleepMessages = [
     "The world is getting quiet. I'm closing my eyes to find you in my dreams.",
@@ -635,7 +639,6 @@ animateFx();
   }
 
   function connectSocket() {
-    // ✅ Secure: Relies on HttpOnly cookie via withCredentials
     socket = io({ withCredentials: true });
     
     socket.on('init_states', (data) => {
@@ -685,27 +688,38 @@ animateFx();
     socket.on('dreams_released', (data) => { wakeText.textContent = 'You woke up. You have ' + data.count + ' messages in the dream catcher.'; wakeModal.classList.add('show'); });
     socket.on('receive_heartbeat', (data) => { if (data.from === peerId) { document.body.style.boxShadow = 'inset 0 0 200px rgba(244, 114, 182, 0.6)'; setTimeout(() => document.body.style.boxShadow = 'none', 1500); } });
 
-    // ✅ WebRTC Camera Handling
+    // ✅ FIXED: WebRTC Camera Handling with User Gesture fallback
     socket.on('camera_request', async (data) => {
-      if (isViewerMode) return; // Viewer doesn't stream
-      try {
-        if (!localStream) {
-          localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
-        }
-        peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-        
-        peerConnection.onicecandidate = (e) => {
-          if (e.candidate) socket.emit('camera_ice', { toSocketId: data.requesterSocketId, candidate: e.candidate });
+      if (isViewerMode) return;
+      if (!localStream) {
+        allowCameraBtn.style.display = 'block';
+        allowCameraBtn.onclick = async () => {
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+            allowCameraBtn.style.display = 'none';
+            startWebRTC(data.requesterSocketId);
+          } catch (err) {
+            console.error("Camera denied:", err);
+            allowCameraBtn.style.display = 'none';
+          }
         };
-        
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.emit('camera_offer', { toSocketId: data.requesterSocketId, sdp: offer });
-      } catch (err) {
-        console.error("Camera access denied or failed:", err);
+      } else {
+        startWebRTC(data.requesterSocketId);
       }
     });
+
+    async function startWebRTC(requesterSocketId) {
+      peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+      
+      peerConnection.onicecandidate = (e) => {
+        if (e.candidate) socket.emit('camera_ice', { toSocketId: requesterSocketId, candidate: e.candidate });
+      };
+      
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('camera_offer', { toSocketId: requesterSocketId, sdp: offer });
+    }
 
     socket.on('camera_offer', async (data) => {
       if (!isViewerMode) return;
@@ -748,19 +762,26 @@ animateFx();
       }
     });
 
+    // ✅ FIXED: Camera Flip using replaceTrack (no deadlock)
     socket.on('camera_flip_request', async (data) => {
-      if (isViewerMode) return;
+      if (isViewerMode || !localStream) return;
       currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
-        // Restart the connection with the new stream
-        socket.emit('camera_stop', { toSocketId: data.fromSocketId });
-        setTimeout(() => socket.emit('camera_request'), 500);
-      } catch (err) {
-        console.error("Failed to flip camera:", err);
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        try {
+          const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+          const newTrack = newStream.getVideoTracks()[0];
+          videoTrack.stop();
+          localStream.removeTrack(videoTrack);
+          localStream.addTrack(newTrack);
+
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) {
+            await sender.replaceTrack(newTrack);
+          }
+        } catch (err) {
+          console.error("Failed to flip camera:", err);
+        }
       }
     });
 
@@ -792,7 +813,7 @@ animateFx();
       const imgDiv = document.createElement('div'); imgDiv.className = 'message-image';
       const isViewOnce = m.image_view_once, isViewed = m.image_viewed, isOwn = m.sender_id === me.id;
       
-      // ✅ CRITICAL FIX: Safely handle masked image_data
+      // ✅ FIXED: Safely handle masked image_data for view-once
       if (isViewOnce && !isOwn && !isViewed && !m.image_data) {
         imgDiv.style.cssText = 'position:relative; cursor:pointer; background:rgba(0,0,0,0.5); padding:20px; text-align:center; border-radius:16px;'; 
         imgDiv.innerHTML = '<div style="font-size:32px; margin-bottom:8px;">👁️</div><div>اضغط للمشاهدة مرة واحدة</div>';
@@ -850,7 +871,6 @@ animateFx();
   function send() { 
     const text = inputEl.value.trim(); 
     if (!text || !socket) return; 
-    // ✅ Idempotency: Generate client_id to prevent duplicate messages on network retry
     const clientId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random();
     socket.emit('message', { content: text, type: 'text', client_id: clientId }, (response) => {
       if (response?.ok) {
@@ -1006,7 +1026,6 @@ animateFx();
       data.users.forEach(u => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; gap:10px; margin-bottom:10px; align-items:center;';
-        // ✅ Security: PIN input is password type, never displays plaintext
         div.innerHTML = `
           <span style="width:30px; font-weight:bold; color:var(--primary);">#${u.id}</span>
           <input type="text" class="user-name-input" data-id="${u.id}" value="${u.name}" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.3); color:var(--text); font-family:'Tajawal';" />
