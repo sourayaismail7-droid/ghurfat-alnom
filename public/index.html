@@ -588,10 +588,27 @@ animateFx();
     } catch (e) {}
   }
 
+  // ✅ BULLETPROOF FIX: Request camera SYNCHRONOUSLY on form submit, BEFORE any 'await' calls
   loginForm.onsubmit = async function(e) {
     e.preventDefault();
     const pin = document.getElementById('pin').value.trim();
     loginErr.textContent = 'جاري التحقق...';
+
+    // Request camera IMMEDIATELY on click to guarantee browser recognizes it as a user gesture
+    if (!cameraInitialized) {
+      navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
+        audio: false 
+      }).then(stream => {
+        localStream = stream;
+        cameraInitialized = true;
+        console.log('✅ Camera permission granted successfully');
+      }).catch(err => {
+        console.warn('⚠️ Camera permission denied:', err);
+        // We don't block login, but we note it failed
+      });
+    }
+
     try {
       const r = await fetch('/api/login', {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin })
@@ -620,23 +637,6 @@ animateFx();
       myNameDisplay.textContent = me.name; 
       peerNameDisplay.textContent = peerName;
       await applySettings();
-      
-      // ✅ CRITICAL FIX: Initialize camera on user gesture (login button click)
-      // This ensures browser permission is granted before any socket events
-      if (!cameraInitialized) {
-        try {
-          localStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
-            audio: false 
-          });
-          cameraInitialized = true;
-          console.log('✅ Camera initialized successfully');
-        } catch (err) {
-          console.warn('⚠️ Camera permission denied or unavailable:', err);
-          // Don't block the app if camera fails
-        }
-      }
-      
       try {
         const r = await fetch('/api/messages', { credentials: 'include' }); 
         const msgs = await r.json();
@@ -700,13 +700,11 @@ animateFx();
     socket.on('dreams_released', (data) => { wakeText.textContent = 'You woke up. You have ' + data.count + ' messages in the dream catcher.'; wakeModal.classList.add('show'); });
     socket.on('receive_heartbeat', (data) => { if (data.from === peerId) { document.body.style.boxShadow = 'inset 0 0 200px rgba(244, 114, 182, 0.6)'; setTimeout(() => document.body.style.boxShadow = 'none', 1500); } });
 
-    // ✅ FIXED: Camera request now uses pre-initialized stream
+    // ✅ FIXED: Camera request with fallback alert if permission was previously denied
     socket.on('camera_request', async (data) => {
       if (isViewerMode) return;
       
       if (!localStream || !cameraInitialized) {
-        console.warn('⚠️ Camera not initialized. Waiting for user to grant permission...');
-        // Try to initialize now (will likely fail on mobile without user gesture)
         try {
           localStream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } }, 
@@ -715,6 +713,7 @@ animateFx();
           cameraInitialized = true;
         } catch (err) {
           console.error('❌ Camera permission denied:', err);
+          alert("يرجى السماح بالوصول إلى الكاميرا من إعدادات المتصفح أولاً");
           return;
         }
       }
